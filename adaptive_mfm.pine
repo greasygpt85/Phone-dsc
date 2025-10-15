@@ -1,0 +1,126 @@
+//@version=5
+indicator(title="Adaptive Multi-Factor Momentum Map", shorttitle="Adaptive MFM", overlay=false, max_bars_back=500, max_lines_count=500, max_labels_count=500)
+
+// --- Determine adaptive regime based on chart timeframe
+defaultSeconds = 60.0
+f_resolveSeconds() =>
+    _secs = timeframe.in_seconds(timeframe.period)
+    if not na(_secs)
+        _secs
+    else
+        float _base = timeframe.multiplier * (timeframe.isintraday ? 60.0 : timeframe.isdaily ? 1440.0 * 60.0 : timeframe.isweekly ? 7.0 * 24.0 * 60.0 * 60.0 : timeframe.ismonthly ? 30.0 * 24.0 * 60.0 * 60.0 : defaultSeconds)
+        _base
+
+secs = math.max(defaultSeconds, f_resolveSeconds())
+mode = secs <= 60.0 ? "scalp" : secs <= 1800.0 ? "intraday" : secs <= 14400.0 ? "swing" : "position"
+rsiLen = switch mode
+    "scalp" => 7
+    "intraday" => 14
+    "swing" => 21
+    => 28
+emaLen = switch mode
+    "scalp" => 21
+    "intraday" => 34
+    "swing" => 55
+    => 89
+stochLen = switch mode
+    "scalp" => 9
+    "intraday" => 14
+    "swing" => 21
+    => 34
+adxLen = switch mode
+    "scalp" => 7
+    "intraday" => 14
+    "swing" => 21
+    => 28
+cciLen = switch mode
+    "scalp" => 14
+    "intraday" => 20
+    "swing" => 26
+    => 34
+thresholdHigh = switch mode
+    "scalp" => 0.7
+    "intraday" => 0.65
+    "swing" => 0.6
+    => 0.55
+thresholdLow = switch mode
+    "scalp" => -0.7
+    "intraday" => -0.65
+    "swing" => -0.6
+    => -0.55
+
+// --- Indicator calculations
+rsiVal = ta.rsi(close, rsiLen)
+emaFastLen = math.max(3, int(math.round(rsiLen * 0.5)))
+emaFast = ta.ema(close, emaFastLen)
+emaSlow = ta.ema(close, emaLen)
+macdVal = emaFast - emaSlow
+macdSignal = ta.ema(macdVal, emaFastLen)
+macdHist = macdVal - macdSignal
+
+k = ta.stoch(high, low, close, stochLen)
+d = ta.sma(k, 3)
+cciVal = ta.cci(high, low, close, cciLen)
+adxVal = ta.adx(adxLen)
+rocVal = ta.roc(close, rsiLen)
+atrVal = ta.atr(math.max(5, rsiLen))
+
+// --- Normalise values to -1..1 range
+normRsi = (rsiVal - 50.0) / 50.0
+normMacd = math.clamp(macdHist / math.max(atrVal, 1e-6), -1.5, 1.5) / 1.5
+normStoch = ((k + d) * 0.5 - 50.0) / 50.0
+normCci = math.clamp(cciVal / 200.0, -1.0, 1.0)
+normAdx = math.clamp((adxVal - 25.0) / 25.0, -1.0, 1.0) * math.sign(emaFast - emaSlow)
+normRoc = math.clamp(rocVal / 5.0, -1.0, 1.0)
+trendDirection = math.tanh((close - emaSlow) / math.max(atrVal * 1.5, 1e-6))
+
+// --- Weightings based on regime
+weightRsi = mode == "scalp" ? 0.20 : mode == "intraday" ? 0.18 : mode == "swing" ? 0.16 : 0.15
+weightMacd = mode == "scalp" ? 0.15 : mode == "intraday" ? 0.18 : mode == "swing" ? 0.22 : 0.24
+weightStoch = mode == "scalp" ? 0.20 : mode == "intraday" ? 0.18 : mode == "swing" ? 0.16 : 0.12
+weightTrend = mode == "scalp" ? 0.15 : mode == "intraday" ? 0.16 : mode == "swing" ? 0.18 : 0.20
+weightCci = mode == "scalp" ? 0.15 : mode == "intraday" ? 0.14 : mode == "swing" ? 0.12 : 0.12
+weightRoc = mode == "scalp" ? 0.15 : mode == "intraday" ? 0.16 : mode == "swing" ? 0.16 : 0.17
+
+rawWeightedScore = normRsi * weightRsi + normMacd * weightMacd + normStoch * weightStoch + trendDirection * weightTrend + normCci * weightCci + normRoc * weightRoc
+weightedScore = math.tanh(rawWeightedScore)
+smoothScore = ta.ema(weightedScore, emaFastLen)
+
+// --- Forecast future bars using linear projection
+slope = smoothScore - smoothScore[1]
+forecast1 = smoothScore + slope
+forecast2 = smoothScore + slope * 2.0
+forecast3 = smoothScore + slope * 3.0
+
+// --- Signal conditions
+buySignal = ta.crossover(smoothScore, thresholdLow)
+sellSignal = ta.crossunder(smoothScore, thresholdHigh)
+
+// --- Plot oscillator and thresholds
+plotZero = plot(0, "Zero", color=color.new(color.gray, 80))
+scoreColorBase = smoothScore >= 0 ? color.teal : color.maroon
+scoreAlpha = 70 - int(math.min(60.0, math.abs(smoothScore) * 60.0))
+plotScore = plot(smoothScore, "Adaptive Score", color=scoreColorBase, linewidth=2)
+plot(thresholdHigh, "Sell Threshold", color=color.new(color.red, 60))
+plot(thresholdLow, "Buy Threshold", color=color.new(color.lime, 60))
+fill(plotScore, plotZero, color=color.new(scoreColorBase, scoreAlpha))
+
+plot(forecast1, "H1 Forecast", color=color.new(color.orange, 40), offset=1, style=plot.style_linebr)
+plot(forecast2, "H2 Forecast", color=color.new(color.orange, 55), offset=2, style=plot.style_linebr)
+plot(forecast3, "H3 Forecast", color=color.new(color.orange, 70), offset=3, style=plot.style_linebr)
+
+plotshape(buySignal, title="Buy Signal", text="Buy", style=shape.labelup, color=color.new(color.green, 0), textcolor=color.white, location=location.bottom, size=size.tiny, offset=0)
+plotshape(sellSignal, title="Sell Signal", text="Sell", style=shape.labeldown, color=color.new(color.red, 0), textcolor=color.white, location=location.top, size=size.tiny, offset=0)
+
+// --- Display informative table
+var table infoTable = table.new(position.top_right, 1, 6, bgcolor=color.new(color.black, 85))
+if barstate.islast
+    table.cell(infoTable, 0, 0, "Mode: " + str.upper(mode), text_color=color.white)
+    table.cell(infoTable, 0, 1, "Score: " + str.tostring(smoothScore, format.percent))
+    table.cell(infoTable, 0, 2, "RSI: " + str.tostring(rsiVal, format.mintick))
+    table.cell(infoTable, 0, 3, "MACD: " + str.tostring(macdHist, format.mintick))
+    table.cell(infoTable, 0, 4, "ADX: " + str.tostring(adxVal, format.mintick))
+    table.cell(infoTable, 0, 5, "ATR: " + str.tostring(atrVal, format.mintick))
+
+// --- Highlight signals on chart background
+bgcolor(buySignal ? color.new(color.lime, 85) : sellSignal ? color.new(color.red, 85) : na)
