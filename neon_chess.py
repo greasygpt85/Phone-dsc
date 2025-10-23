@@ -439,16 +439,41 @@ UNICODE_PIECES = {
 # ---------------------------------------------------------------------------
 
 # Edit the palette below to create different neon experiences.
+
+
+def color_rgba(*components: float) -> Color:
+    """Return a :class:`Color` with a guaranteed alpha channel.
+
+    Pythonista's ``Color`` requires four channels (RGBA).  To make the theme
+    definition friendlier for customization, this helper accepts 3-tuples or
+    four component values, automatically appending an alpha of ``1.0`` when it
+    is omitted.
+    """
+
+    if len(components) == 1 and isinstance(components[0], (tuple, list)):
+        components = tuple(components[0])
+    else:
+        components = tuple(components)
+
+    if len(components) == 3:
+        components = (*components, 1.0)
+
+    if len(components) != 4:
+        raise ValueError("Color expects 3 or 4 numeric components (r, g, b, a)")
+
+    return Color(*components)
+
+
 NEON_THEME = {
-    "background": Color(0.03, 0.0, 0.08, 1.0),
-    "board_light": Color(0.25, 0.0, 0.45, 1.0),
-    "board_dark": Color(0.0, 0.75, 0.65, 1.0),
-    "outline": Color(0.0, 0.9, 0.9, 1.0),
-    "highlight": Color(1.0, 0.2, 0.8, 0.45),
-    "move_hint": Color(0.95, 1.0, 0.3, 0.35),
-    "white_piece": Color(0.4, 1.0, 1.0, 1.0),
-    "black_piece": Color(1.0, 0.3, 0.8, 1.0),
-    "text": Color(0.8, 1.0, 1.0, 1.0),
+    "background": color_rgba(0.03, 0.0, 0.08, 1.0),
+    "board_light": color_rgba(0.25, 0.0, 0.45, 1.0),
+    "board_dark": color_rgba(0.0, 0.75, 0.65, 1.0),
+    "outline": color_rgba(0.0, 0.9, 0.9, 1.0),
+    "highlight": color_rgba(1.0, 0.2, 0.8, 0.45),
+    "move_hint": color_rgba(0.95, 1.0, 0.3, 0.35),
+    "white_piece": color_rgba(0.4, 1.0, 1.0, 1.0),
+    "black_piece": color_rgba(1.0, 0.3, 0.8, 1.0),
+    "text": color_rgba(0.8, 1.0, 1.0, 1.0),
 }
 
 FONT_NAME = "Futura"
@@ -467,7 +492,7 @@ class ButtonNode(Node):
         )
         background = ShapeNode(
             ui.Path.rounded_rect(0, 0, label.frame.w + padding, label.frame.h + padding, 8),
-            fill_color=Color(0.2, 0.0, 0.4, 0.85),
+            fill_color=color_rgba(0.2, 0.0, 0.4, 0.85),
             stroke_color=NEON_THEME["outline"],
             position=(0, 0),
         )
@@ -653,7 +678,7 @@ class ChessScene(Scene):
         node = ShapeNode(
             path,
             fill_color=color,
-            stroke_color=Color(0, 0, 0, 0),
+            stroke_color=color_rgba(0, 0, 0, 0),
         )
         node.position = (
             self._square_center(square_index)[0] - size / 2,
