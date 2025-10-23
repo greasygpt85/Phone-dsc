@@ -472,7 +472,13 @@ def color_rgba(*components: float) -> Color:
         else:
             components = (value,)
     else:
-        components = tuple(components)
+        flat: List[float] = []
+        for comp in components:
+            if isinstance(comp, (tuple, list)):
+                flat.extend(comp)
+            else:
+                flat.append(comp)
+        components = tuple(flat)
 
     if len(components) == 3:
         components = (*components, 1.0)
@@ -485,7 +491,12 @@ def color_rgba(*components: float) -> Color:
     if any(c > 1.0 for c in components) and all(0.0 <= c <= 255.0 for c in components):
         components = tuple(c / 255.0 for c in components)
 
-    return Color(*components)
+    try:
+        return Color(*components)
+    except TypeError as exc:
+        if "missing 1 required positional argument" in str(exc) and len(components) == 3:
+            return Color(*(components + (1.0,)))
+        raise
 
 
 # Update the tuples below to customize the neon palette.  Each entry may be a
