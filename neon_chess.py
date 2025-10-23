@@ -440,15 +440,15 @@ UNICODE_PIECES = {
 
 # Edit the palette below to create different neon experiences.
 NEON_THEME = {
-    "background": Color(0.03, 0.0, 0.08),
-    "board_light": Color(0.25, 0.0, 0.45),
-    "board_dark": Color(0.0, 0.75, 0.65),
-    "outline": Color(0.0, 0.9, 0.9),
+    "background": Color(0.03, 0.0, 0.08, 1.0),
+    "board_light": Color(0.25, 0.0, 0.45, 1.0),
+    "board_dark": Color(0.0, 0.75, 0.65, 1.0),
+    "outline": Color(0.0, 0.9, 0.9, 1.0),
     "highlight": Color(1.0, 0.2, 0.8, 0.45),
     "move_hint": Color(0.95, 1.0, 0.3, 0.35),
-    "white_piece": Color(0.4, 1.0, 1.0),
-    "black_piece": Color(1.0, 0.3, 0.8),
-    "text": Color(0.8, 1.0, 1.0),
+    "white_piece": Color(0.4, 1.0, 1.0, 1.0),
+    "black_piece": Color(1.0, 0.3, 0.8, 1.0),
+    "text": Color(0.8, 1.0, 1.0, 1.0),
 }
 
 FONT_NAME = "Futura"
@@ -539,7 +539,7 @@ class ChessScene(Scene):
                 12,
             ),
             stroke_color=NEON_THEME["outline"],
-            fill_color=Color(0.05, 0.0, 0.15),
+            fill_color=Color(0.05, 0.0, 0.15, 1.0),
             line_width=4,
         )
         board_outline.anchor_point = (0, 0)
