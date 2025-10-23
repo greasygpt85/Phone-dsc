@@ -445,13 +445,32 @@ def color_rgba(*components: float) -> Color:
     """Return a :class:`Color` with a guaranteed alpha channel.
 
     Pythonista's ``Color`` requires four channels (RGBA).  To make the theme
-    definition friendlier for customization, this helper accepts 3-tuples or
-    four component values, automatically appending an alpha of ``1.0`` when it
-    is omitted.
+    definition friendlier for customization, this helper accepts individual
+    component values, tuples/lists, ``scene.Color`` instances, ``ui.Color``
+    objects, or color strings (passed through ``ui.parse_color``).  When only
+    RGB values are provided, an alpha of ``1.0`` is automatically appended.
     """
 
-    if len(components) == 1 and isinstance(components[0], (tuple, list)):
-        components = tuple(components[0])
+    if not components:
+        raise ValueError("Color expects at least one component")
+
+    if len(components) == 1:
+        value = components[0]
+        if isinstance(value, Color):
+            return value
+        if hasattr(value, "rgba"):
+            components = tuple(value.rgba)
+        elif hasattr(value, "components"):
+            components = tuple(value.components)
+        elif isinstance(value, str):
+            parsed = ui.parse_color(value)
+            if parsed is None:
+                raise ValueError(f"Unable to parse color string: {value!r}")
+            components = tuple(parsed)
+        elif isinstance(value, (tuple, list)):
+            components = tuple(value)
+        else:
+            components = (value,)
     else:
         components = tuple(components)
 
@@ -461,20 +480,33 @@ def color_rgba(*components: float) -> Color:
     if len(components) != 4:
         raise ValueError("Color expects 3 or 4 numeric components (r, g, b, a)")
 
+    components = tuple(float(c) for c in components)
+
+    if any(c > 1.0 for c in components) and all(0.0 <= c <= 255.0 for c in components):
+        components = tuple(c / 255.0 for c in components)
+
     return Color(*components)
 
 
-NEON_THEME = {
-    "background": color_rgba(0.03, 0.0, 0.08, 1.0),
-    "board_light": color_rgba(0.25, 0.0, 0.45, 1.0),
-    "board_dark": color_rgba(0.0, 0.75, 0.65, 1.0),
-    "outline": color_rgba(0.0, 0.9, 0.9, 1.0),
-    "highlight": color_rgba(1.0, 0.2, 0.8, 0.45),
-    "move_hint": color_rgba(0.95, 1.0, 0.3, 0.35),
-    "white_piece": color_rgba(0.4, 1.0, 1.0, 1.0),
-    "black_piece": color_rgba(1.0, 0.3, 0.8, 1.0),
-    "text": color_rgba(0.8, 1.0, 1.0, 1.0),
+# Update the tuples below to customize the neon palette.  Each entry may be a
+# 3- or 4-component iterable of RGB(A) values (0-1 or 0-255), a color string
+# understood by ``ui.parse_color``, or a ``scene.Color``/``ui.Color`` instance.
+NEON_THEME_VALUES = {
+    # Backgrounds
+    "background": (0.03, 0.0, 0.08, 1.0),
+    "board_light": (0.25, 0.0, 0.45, 1.0),
+    "board_dark": (0.0, 0.75, 0.65, 1.0),
+    # Accents & highlights
+    "outline": (0.0, 0.9, 0.9, 1.0),
+    "highlight": (1.0, 0.2, 0.8, 0.45),
+    "move_hint": (0.95, 1.0, 0.3, 0.35),
+    # Pieces & text
+    "white_piece": (0.4, 1.0, 1.0, 1.0),
+    "black_piece": (1.0, 0.3, 0.8, 1.0),
+    "text": (0.8, 1.0, 1.0, 1.0),
 }
+
+NEON_THEME = {name: color_rgba(value) for name, value in NEON_THEME_VALUES.items()}
 
 FONT_NAME = "Futura"
 
@@ -564,7 +596,7 @@ class ChessScene(Scene):
                 12,
             ),
             stroke_color=NEON_THEME["outline"],
-            fill_color=Color(0.05, 0.0, 0.15, 1.0),
+            fill_color=color_rgba(0.05, 0.0, 0.15, 1.0),
             line_width=4,
         )
         board_outline.anchor_point = (0, 0)
