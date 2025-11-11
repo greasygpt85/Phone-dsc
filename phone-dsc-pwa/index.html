@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Phone DSC — Push-To (PWA)</title>
+<style>
+  :root {
+    --bg:#050013;
+    --bg-alt:#090021;
+    --fg:#f6f7ff;
+    --muted:#8a8fc4;
+    --accent:#ff36f8;
+    --accent-soft:rgba(255,54,248,0.32);
+    --accent-glow:rgba(255,54,248,0.35);
+    --accent-aux:#00f6ff;
+    --accent-aux-soft:rgba(0,246,255,0.22);
+    --panel:#0d0720;
+    --panel-border:rgba(160,90,255,0.4);
+    --good:#76ffb5;
+    --warn:#ffd166;
+    --shadow:0 0 20px rgba(140,0,255,0.3);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin:0; padding:0;
+    min-height:100%;
+    background: radial-gradient(circle at 20% 20%, var(--accent-soft), transparent 55%),
+                radial-gradient(circle at 80% 10%, var(--accent-aux-soft), transparent 60%),
+                linear-gradient(160deg, var(--bg) 0%, var(--bg-alt) 100%);
+    color: var(--fg);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  }
+  header {
+    position: sticky; top:0;
+    background: linear-gradient(120deg, var(--accent-soft), var(--accent-aux-soft)) var(--panel);
+    border-bottom: 1px solid var(--panel-border);
+    padding: 12px 14px; z-index: 10;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
+  }
+  h1 { font-size: 20px; margin: 0 0 8px; line-height: 1.2; letter-spacing: 0.6px; text-transform: uppercase; text-shadow: 0 0 8px var(--accent-glow); }
+  .sub { color: var(--muted); font-size: 12px; text-shadow: 0 0 6px var(--accent-aux-soft); }
+  main { padding: 14px 16px 110px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .row > * { flex: 1 1 auto; }
+  button, select, input[type="number"], input[type="text"] {
+    background: rgba(12,6,30,0.85);
+    color:var(--fg);
+    border:1px solid var(--panel-border);
+    border-radius:12px;
+    padding:11px 13px;
+    font-size:15px;
+    box-shadow: 0 0 0 rgba(255,54,248,0);
+    transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+  }
+  button { font-weight: 600; letter-spacing:0.4px; text-shadow:0 0 6px var(--accent-glow); }
+  button.primary {
+    background: linear-gradient(130deg, var(--accent-soft), var(--accent-aux-soft));
+    border-color: var(--accent);
+    box-shadow: 0 0 18px var(--accent-soft);
+  }
+  button.accent {
+    background: linear-gradient(130deg, var(--accent-aux-soft), var(--accent-soft));
+    border-color: var(--accent-aux);
+    color:#e8f9ff;
+    box-shadow: 0 0 20px var(--accent-aux-soft);
+  }
+  button:hover, select:focus, input:focus {
+    border-color: var(--accent-aux);
+    box-shadow: 0 0 22px var(--accent-glow);
+    transform: translateY(-1px);
+    outline:none;
+  }
+  select { appearance:none; background-image: linear-gradient(130deg, var(--accent-soft), var(--accent-aux-soft)); }
+  .panel {
+    background: linear-gradient(150deg, rgba(16,8,40,0.92), rgba(8,4,26,0.96));
+    border:1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 14px;
+    margin: 12px 0;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(6px);
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kv { display:flex; justify-content:space-between; font-variant-numeric:tabular-nums; padding:7px 9px; background:rgba(12,6,30,0.75); border-radius:10px; border:1px solid rgba(160,90,255,0.25); box-shadow: inset 0 0 12px rgba(0,246,255,0.08); }
+  .kv small { color: var(--muted); text-shadow:0 0 4px var(--accent-aux-soft); }
+  .bad { color:#ff7b9c; text-shadow:0 0 8px rgba(255,123,156,0.45); }
+  .good { color: var(--good); text-shadow:0 0 8px rgba(118,255,181,0.5); }
+  .warn { color: var(--warn); text-shadow:0 0 8px rgba(255,209,102,0.45); }
+  .muted { color: var(--muted); }
+  .push { display:flex; gap:12px; }
+  .push .arrow {
+    flex:1 1 50%;
+    background: linear-gradient(140deg, var(--accent-aux-soft), var(--accent-soft));
+    border:1px solid var(--accent-aux);
+    border-radius:14px;
+    padding:18px;
+    text-align:center;font-size:18px; font-weight:700;
+    text-shadow:0 0 10px var(--accent-aux-soft);
+    box-shadow: 0 0 22px var(--accent-aux-soft);
+    transition: box-shadow .2s ease, transform .2s ease;
+  }
+  .push .arrow:hover { transform: translateY(-1px); box-shadow: 0 0 28px var(--accent-glow); }
+  .arrow.good { border-color: rgba(118,255,181,0.7); box-shadow: 0 0 26px rgba(118,255,181,0.4); }
+  .arrow.warn { border-color: rgba(255,209,102,0.7); box-shadow: 0 0 24px rgba(255,209,102,0.35); }
+  .arrow.bad { border-color: rgba(255,123,156,0.7); box-shadow: 0 0 24px rgba(255,123,156,0.35); }
+  .arrow .big { display:block; font-size:30px; margin-top:6px; letter-spacing:.7px; }
+  .tips { font-size:14px; line-height:1.45; }
+  .switch { position:relative; display:inline-block; width:54px; height:30px; vertical-align:middle; }
+  .switch input { display:none; }
+  .slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:rgba(80,70,130,0.6); transition:.2s; border-radius:30px; box-shadow: inset 0 0 12px rgba(0,0,0,0.35); }
+  .slider:before { position:absolute; content:""; height:22px; width:22px; left:4px; top:4px; background:linear-gradient(135deg, var(--accent), var(--accent-aux)); transition:.2s;border-radius:50%; box-shadow: 0 0 12px var(--accent-glow); }
+  input:checked + .slider { background: linear-gradient(135deg, var(--accent-soft), var(--accent-aux-soft)); box-shadow: 0 0 18px var(--accent-glow); }
+  input:checked + .slider:before { transform:translateX(24px); }
+  details summary { cursor:pointer; color:#d0cfff; text-shadow:0 0 8px var(--accent-glow); }
+  .footer { position:fixed; left:0; right:0; bottom:0; background:rgba(8,4,22,0.9); border-top:1px solid var(--panel-border); padding:10px 16px; display:flex; align-items:center; gap:10px; box-shadow:0 -4px 20px rgba(0,0,0,0.6); backdrop-filter: blur(10px); }
+  .footnote { font-size: 11px; color: var(--muted); }
+  .small { font-size: 12px; color: var(--muted); }
+  .banner { background:linear-gradient(135deg, var(--accent-soft), var(--accent-aux-soft)); border:1px solid var(--accent); color:#ffe7ff; padding:10px 12px; border-radius:12px; margin-bottom:12px; box-shadow:0 0 20px var(--accent-glow); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Phone DSC — Push-To (PWA)</h1>
+  <div class="row">
+    <span class="sub">Allow <b>Location</b> and <b>Motion</b> permissions. If Location fails, use the preset or enter lat/lon manually.</span>
+    <label class="small">Night mode&nbsp;
+      <span class="switch"><input type="checkbox" id="nightToggle"><span class="slider"></span></span>
+    </label>
+  </div>
+</header>
+
+<main>
+  <div id="httpsWarn" class="banner" style="display:none;"></div>
+
+  <div class="panel">
+    <div class="row">
+      <button id="btnLocation" class="primary">Get Location</button>
+      <button id="btnPreset" class="accent">Use Gulfport, MS</button>
+      <input id="lat" type="number" step="0.0001" placeholder="Latitude" />
+      <input id="lon" type="number" step="0.0001" placeholder="Longitude" />
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <button id="btnMotion" class="accent">Enable Motion/Compass</button>
+      <button id="btnHorizon">Set Horizon</button>
+      <button id="btnZenith">Set Zenith</button>
+      <button id="btnAlign">Align to Selected</button>
+      <button id="btnSave">Save Loc</button>
+      <button id="btnClear">Clear Loc</button>
+    </div>
+    <div class="grid" style="margin-top:10px;">
+      <div class="kv"><small>Lat</small><span id="latOut" class="muted">—</span></div>
+      <div class="kv"><small>Lon</small><span id="lonOut" class="muted">—</span></div>
+      <div class="kv"><small>LST (h)</small><span id="lstOut">—</span></div>
+      <div class="kv"><small>Time</small><span id="timeOut">—</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <select id="objSelect" title="Targets"></select>
+      <button id="btnEasy">Easy Tonight</button>
+    </div>
+    <div class="grid" style="margin-top:10px;">
+      <div class="kv"><small>Target Alt</small><span id="tAlt">—</span></div>
+      <div class="kv"><small>Target Az</small><span id="tAz">—</span></div>
+      <div class="kv"><small>Scope Alt</small><span id="cAlt">—</span></div>
+      <div class="kv"><small>Scope Az</small><span id="cAz">—</span></div>
+    </div>
+    <div class="push" style="margin-top:10px;">
+      <div class="arrow" id="altArrow">ALT<span class="big" id="altDir">—</span></div>
+      <div class="arrow" id="azArrow">AZ<span class="big" id="azDir">—</span></div>
+    </div>
+  </div>
+
+  <div class="panel tips">
+    <details open>
+      <summary><b>How to use</b></summary>
+      <ol>
+        <li>Mount phone along the telescope tube; avoid large metal nearby for better compass accuracy.</li>
+        <li>Tap <b>Get Location</b> (requires HTTPS) or <b>Use Gulfport, MS</b>, or enter lat/lon then <b>Save Loc</b>.</li>
+        <li>Tap <b>Enable Motion/Compass</b> and grant permission.</li>
+        <li>Calibrate altitude: set <b>Horizon</b> then <b>Zenith</b>. Align azimuth on a known object using <b>Align to Selected</b>.</li>
+        <li>Select a target and follow arrows until both read 0°.</li>
+      </ol>
+      <p class="small">iPhone: Settings → Privacy & Security → Location Services → Safari Websites → <b>While Using</b> (+ Precise Location). Settings → Safari → Location → <b>Allow</b>.</p>
+    </details>
+  </div>
+
+  <div class="panel tips">
+    <details open>
+      <summary><b>Viewing tips for popular objects</b></summary>
+      <div id="tipsBox" class="small"></div>
+    </details>
+  </div>
+
+  <div class="panel">
+    <details>
+      <summary><b>Debug</b> (sensors & permissions)</summary>
+      <div class="grid">
+        <div class="kv"><small>Heading</small><span id="dbgHead">—</span></div>
+        <div class="kv"><small>Beta (tilt)</small><span id="dbgBeta">—</span></div>
+        <div class="kv"><small>Gamma (roll)</small><span id="dbgGamma">—</span></div>
+        <div class="kv"><small>Alt Cal</small><span id="dbgAltCal">—</span></div>
+        <div class="kv"><small>Az Offset</small><span id="dbgAzOff">—</span></div>
+        <div class="kv"><small>Secure</small><span id="dbgSecure">—</span></div>
+        <div class="kv"><small>Geo Err</small><span id="dbgGeoErr">—</span></div>
+      </div>
+    </details>
+  </div>
+</main>
+
+<footer class="footer">
+  <span class="footnote">If location fails, host this file over HTTPS (GitHub Pages/Netlify) or use manual/preset.</span>
+</footer>
+<script>if ('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js').catch(console.error));}</script>
+
+<script>
+const DEG2RAD = Math.PI/180, RAD2DEG = 180/Math.PI;
+function mod(n, m) { return ((n % m) + m) % m; }
+function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+function julianDate(date) { return date.getTime() / 86400000 + 2440587.5; }
+function gmstHours(date) { const JD = julianDate(date); const d = JD - 2451545.0; let GMST = 18.697374558 + 24.06570982441908 * d; return mod(GMST, 24); }
+function lstHours(date, lonDeg) { return mod(gmstHours(date) + lonDeg/15, 24); }
+function radecToAltAz(raHours, decDeg, latDeg, lonDeg, date) {
+  const LST = lstHours(date, lonDeg);
+  const HA_h = mod(LST - raHours + 24, 24);
+  const HA = HA_h * 15 * DEG2RAD;
+  const dec = decDeg * DEG2RAD;
+  const lat = latDeg * DEG2RAD;
+  const sinAlt = Math.sin(dec)*Math.sin(lat) + Math.cos(dec)*Math.cos(lat)*Math.cos(HA);
+  const alt = Math.asin(clamp(sinAlt, -1, 1));
+  const y = -Math.sin(HA)*Math.cos(dec);
+  const x = Math.sin(dec)*Math.cos(lat) - Math.cos(dec)*Math.sin(lat)*Math.cos(HA);
+  let az = Math.atan2(y, x);
+  az = mod(az * RAD2DEG, 360);
+  return { altDeg: alt * RAD2DEG, azDeg: az, LST };
+}
+function angDiff(target, current) { return mod((target - current) + 180, 360) - 180; }
+
+const OBJECTS = [
+  ["Polaris (α UMi)", "Star (double)", 2 + 31/60 + 49/3600, 89 + 15/60 + 51/3600, 2.0, "Great for azimuth alignment. Fixed near north; at Gulf Coast its altitude roughly equals your latitude."],
+  ["M31 Andromeda", "Galaxy", 0 + 42/60 + 44/3600, 41 + 16/60 + 9/3600, 3.4, "Use low power (25–40×) and a wide field. Dark skies help. Try sweeping to catch its extended halo."],
+  ["M13 Hercules", "Globular cluster", 16 + 41/60 + 41/3600, 36 + 28/60, 5.8, "Medium power (80–150×). Averted vision resolves edge stars in 6–10\" scopes."],
+  ["M57 Ring (Lyra)", "Planetary nebula", 18 + 53/60 + 35/3600, 33 + 2/60, 8.8, "Start ~80× to spot the smoke ring; OIII/UHC filter boosts contrast. 150–200× shows the hole well."],
+  ["M27 Dumbbell", "Planetary nebula", 19 + 59/60 + 36/3600, 22 + 43/60, 7.5, "Low–medium power. OIII/UHC filter helps. Large, bright, easy in suburban skies."],
+  ["M45 Pleiades", "Open cluster", 3 + 47/60 + 24/3600, 24 + 7/60, 1.6, "Very low power (20–30×). Best framed with a wide-field eyepiece; nebulosity needs dark skies."],
+  ["M42 Orion Nebula", "Emission nebula", 5 + 35/60 + 17/3600, -5 - 23/60 - 28/3600, 4.0, "Use 40–100×. UHC filter enhances structure. Split the Trapezium at higher power."],
+  ["M8 Lagoon", "Emission nebula", 18 + 3/60, -24 - 23/60, 6.0, "Wide field + UHC/OIII. Also look for open cluster NGC 6530 on the edge."],
+  ["M20 Trifid", "Emission/reflection", 18 + 2/60, -23 - 2/60, 6.3, "Medium power. OIII helps the dark lanes; reflection part stands out without filter."],
+  ["M22 (Sagittarius)", "Globular cluster", 18 + 36/60, -23 - 54/60, 5.1, "Medium–high power resolves rich star field; low altitude from mid-latitudes."],
+  ["M11 Wild Duck", "Open cluster", 18 + 51/60, -6 - 16/60, 6.3, "Medium power. Very rich; resembles a flying V at 80–120×."],
+  ["Albireo (β Cyg)", "Double star", 19 + 30/60 + 43/3600, 27 + 57/60 + 34/3600, 3.1, "Gorgeous color contrast double. Split cleanly at ~50×."],
+  ["Double Cluster (h/χ Per)", "Open clusters", 2 + 20/60, 57 + 8/60, 4.3, "Use 30–60× to frame both clusters in one field; rich star clouds."],
+  ["M7 Ptolemy", "Open cluster", 17 + 53/60, -34 - 49/60, 3.3, "Very low power. Low altitude; best from dark southern horizons."],
+  ["M6 Butterfly", "Open cluster", 17 + 40/60, -32 - 13/60, 4.2, "Low power; distinctive butterfly pattern."],
+  ["M4 (Scorpius)", "Globular cluster", 16 + 23/60, -26 - 32/60, 5.6, "Medium power; central bar of stars is visible in small scopes."],
+  ["M81 Bode's", "Galaxy", 9 + 55/60 + 33/3600, 69 + 3/60 + 55/3600, 6.9, "Pair with M82 at low–medium power; dark skies help a lot."],
+  ["M82 Cigar", "Galaxy", 9 + 55/60 + 53/3600, 69 + 40/60 + 57/3600, 8.4, "Edge-on galaxy—look for mottled dust lane at ~100×."],
+  ["M51 Whirlpool", "Galaxy", 13 + 29/60 + 52/3600, 47 + 11/60 + 43/3600, 8.4, "Dark skies needed; spiral hints at 120–180× with averted vision."],
+  ["Saturn (approx)", "Planet", 23.0, -6.0, 1.0, "Use 150–250× in steady seeing. Cassini Division pops in good moments."]
+];
+
+function tipsHTML(){ return OBJECTS.map(o => `<div style="padding:4px 0;"><b>${o[0]}</b> — <i>${o[1]}</i>. ${o[5]}</div>`).join(""); }
+const state = { lat:null, lon:null, lst:null, selectedIndex:0, heading:null, beta:null, gamma:null, altCal:{a:null,b:null,betaH:null,betaZ:null}, azOffset:0, running:false, watchId:null };
+const $ = id => document.getElementById(id);
+
+document.addEventListener('DOMContentLoaded', () => { $("tipsBox").innerHTML = tipsHTML(); populateSelect(); loadSavedLoc(); });
+
+function populateSelect(sortedIndices = null) {
+  const sel = $("objSelect");
+  sel.innerHTML = "";
+  const indices = sortedIndices ?? OBJECTS.map((_,i)=>i);
+  indices.forEach(i => {
+    const o = OBJECTS[i];
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = `${o[0]} — ${o[1]}`;
+    sel.appendChild(opt);
+  });
+  sel.value = state.selectedIndex;
+}
+
+function setLatLon(lat, lon, persist=false) {
+  state.lat = lat; state.lon = lon;
+  $("lat").value = lat.toFixed(4);
+  $("lon").value = lon.toFixed(4);
+  $("latOut").textContent = lat.toFixed(4);
+  $("lonOut").textContent = lon.toFixed(4);
+  if (persist) { localStorage.setItem("dsc_lat", String(lat)); localStorage.setItem("dsc_lon", String(lon)); }
+}
+function loadSavedLoc() {
+  const slat = localStorage.getItem("dsc_lat");
+  const slon = localStorage.getItem("dsc_lon");
+  if (slat && slon && !isNaN(parseFloat(slat)) && !isNaN(parseFloat(slon))) setLatLon(parseFloat(slat), parseFloat(slon));
+}
+
+function explainGeoError(code, message) {
+  let hint = "";
+  switch (code) {
+    case 1: hint = "Permission denied. iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using (+ Precise)."; break;
+    case 2: hint = "Position unavailable. Move to open sky or toggle Airplane Mode off/on."; break;
+    case 3: hint = "Timed out. Try again. Many browsers block geolocation on non-HTTPS pages."; break;
+    default: hint = "Unknown error. Many browsers require HTTPS for geolocation.";
+  }
+  $("dbgGeoErr").textContent = (message || "error") + " — " + hint;
+  alert("Location error: " + (message || "error") + "\\n\\n" + hint);
+}
+
+function requestLocation() {
+  if (!navigator.geolocation) { alert("Geolocation not supported."); return; }
+  try {
+    if (state.watchId != null) navigator.geolocation.clearWatch(state.watchId);
+    state.watchId = navigator.geolocation.watchPosition(pos => {
+      setLatLon(pos.coords.latitude, pos.coords.longitude);
+      if (state.watchId != null) { navigator.geolocation.clearWatch(state.watchId); state.watchId = null; }
+    }, err => { explainGeoError(err.code, err.message); }, { enableHighAccuracy:true, maximumAge:2000, timeout:15000 });
+  } catch (e) {
+    navigator.geolocation.getCurrentPosition(pos => setLatLon(pos.coords.latitude, pos.coords.longitude),
+      err => explainGeoError(err.code, err.message), { enableHighAccuracy:true, timeout:10000 });
+  }
+}
+
+function onDeviceOrientation(e) {
+  let heading = null;
+  if (typeof e.webkitCompassHeading === "number" && !isNaN(e.webkitCompassHeading)) heading = e.webkitCompassHeading;
+  else if (e.absolute && typeof e.alpha === "number") heading = 360 - e.alpha;
+  else if (typeof e.alpha === "number") heading = 360 - e.alpha;
+  if (heading != null) state.heading = mod(heading, 360);
+  state.beta = (typeof e.beta === "number") ? e.beta : state.beta;
+  state.gamma = (typeof e.gamma === "number") ? e.gamma : state.gamma;
+  $("dbgHead").textContent = state.heading != null ? state.heading.toFixed(1) + "°" : "—";
+  $("dbgBeta").textContent = state.beta != null ? state.beta.toFixed(1) + "°" : "—";
+  $("dbgGamma").textContent = state.gamma != null ? state.gamma.toFixed(1) + "°" : "—";
+}
+
+async function enableMotion() {
+  try {
+    if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
+      const resp = await DeviceOrientationEvent.requestPermission();
+      if (resp !== "granted") { alert("Motion permission denied."); return; }
+    }
+    window.addEventListener("deviceorientation", onDeviceOrientation, true);
+    state.running = true;
+  } catch (e) { alert("Motion permission failed: " + e); }
+}
+
+function setHorizon() { if (state.beta == null) { alert("No tilt reading yet — move the phone to wake sensors."); return; } state.altCal.betaH = state.beta; computeAltCalibration(); }
+function setZenith() { if (state.beta == null) { alert("No tilt reading yet — move the phone to wake sensors."); return; } state.altCal.betaZ = state.beta; computeAltCalibration(); }
+function computeAltCalibration() {
+  const { betaH, betaZ } = state.altCal;
+  if (betaH == null || betaZ == null || Math.abs(betaZ - betaH) < 5) { $("dbgAltCal").textContent = "—"; state.altCal.a = null; state.altCal.b = null; return; }
+  const a = 90 / (betaZ - betaH); const b = -a * betaH; state.altCal.a = a; state.altCal.b = b; $("dbgAltCal").textContent = `a=${a.toFixed(3)}, b=${b.toFixed(2)}`;
+}
+function currentAltFromTilt() { if (state.altCal.a == null || state.beta == null) return null; return clamp(state.altCal.a * state.beta + state.altCal.b, -5, 95); }
+
+function alignToSelected() {
+  const idx = parseInt($("objSelect").value, 10); if (isNaN(idx)) return;
+  const o = OBJECTS[idx];
+  if (state.lat == null || state.lon == null) { alert("Set your location first."); return; }
+  if (state.heading == null) { alert("Compass not ready."); return; }
+  const now = new Date();
+  const pos = radecToAltAz(o[2], o[3], state.lat, state.lon, now);
+  const altM = currentAltFromTilt(); const azM = state.heading;
+  if (altM == null) { state.azOffset = angDiff(pos.azDeg, azM); }
+  else { state.azOffset = angDiff(pos.azDeg, azM); const altOff = pos.altDeg - altM; state.altCal.b += altOff; }
+  $("dbgAzOff").textContent = state.azOffset.toFixed(1) + "°";
+}
+
+function easyTonightIndices() {
+  if (state.lat == null || state.lon == null) return OBJECTS.map((_,i)=>i);
+  const now = new Date();
+  const scored = OBJECTS.map((o, i) => {
+    const pos = radecToAltAz(o[2], o[3], state.lat, state.lon, now);
+    const alt = pos.altDeg; const mag = o[4]; const visible = alt > 15;
+    const score = (visible ? alt : -90) + (8 - (mag||8)) * 4;
+    return { i, score, alt, az: pos.azDeg, mag };
+  });
+  scored.sort((a,b)=>b.score - a.score);
+  return scored.map(s=>s.i);
+}
+
+function update() {
+  const now = new Date();
+  $("timeOut").textContent = now.toLocaleTimeString();
+  $("dbgSecure").textContent = window.isSecureContext ? "HTTPS/secure" : "NOT secure";
+  if (!window.isSecureContext) {
+    const warn = document.getElementById("httpsWarn");
+    warn.style.display = "block";
+    warn.textContent = "Location usually requires HTTPS. Host this file (GitHub Pages/Netlify) or use the preset/manual entry.";
+  }
+  if (state.lat != null && state.lon != null) {
+    const lst = lstHours(now, state.lon);
+    state.lst = lst; $("lstOut").textContent = lst.toFixed(3);
+    $("latOut").textContent = state.lat.toFixed(4); $("lonOut").textContent = state.lon.toFixed(4);
+  }
+  const selIdx = parseInt($("objSelect").value, 10);
+  if (!isNaN(selIdx) && state.lat != null && state.lon != null) {
+    const o = OBJECTS[selIdx]; const pos = radecToAltAz(o[2], o[3], state.lat, state.lon, now);
+    $("tAlt").textContent = pos.altDeg.toFixed(1) + "°"; $("tAz").textContent = pos.azDeg.toFixed(1) + "°";
+    let cAz = null, cAlt = null;
+    if (state.heading != null) cAz = mod(state.heading + state.azOffset, 360);
+    if (state.beta != null) { const altFromTilt = currentAltFromTilt(); cAlt = (altFromTilt != null) ? altFromTilt : null; }
+    $("cAz").textContent = (cAz!=null) ? cAz.toFixed(1) + "°" : "—";
+    $("cAlt").textContent = (cAlt!=null) ? cAlt.toFixed(1) + "°" : "—";
+    let dAzText = "—", dAltText = "—"; let azClass = "", altClass = "";
+    if (cAz != null) { const dAz = angDiff(pos.azDeg, cAz); const lr = dAz > 1 ? "RIGHT" : (dAz < -1 ? "LEFT" : "OK"); dAzText = (lr === "OK") ? "0°" : `${lr} ${Math.abs(dAz).toFixed(0)}°`; azClass = Math.abs(dAz) <= 2 ? "good" : (Math.abs(dAz) <= 10 ? "warn" : "bad"); }
+    if (cAlt != null) { const dAlt = pos.altDeg - cAlt; const ud = dAlt > 1 ? "UP" : (dAlt < -1 ? "DOWN" : "OK"); dAltText = (ud === "OK") ? "0°" : `${ud} ${Math.abs(dAlt).toFixed(0)}°`; altClass = Math.abs(dAlt) <= 2 ? "good" : (Math.abs(dAlt) <= 10 ? "warn" : "bad"); }
+    $("azDir").textContent = dAzText; $("altDir").textContent = dAltText; $("azArrow").className = "arrow " + azClass; $("altArrow").className = "arrow " + altClass;
+  }
+  requestAnimationFrame(update);
+}
+
+const palettes = {
+  neon: {
+    "--bg": "#050013",
+    "--bg-alt": "#090021",
+    "--panel": "#0d0720",
+    "--fg": "#f6f7ff",
+    "--muted": "#8a8fc4",
+    "--accent": "#ff36f8",
+    "--accent-soft": "rgba(255,54,248,0.32)",
+    "--accent-glow": "rgba(255,54,248,0.35)",
+    "--accent-aux": "#00f6ff",
+    "--accent-aux-soft": "rgba(0,246,255,0.22)",
+    "--panel-border": "rgba(160,90,255,0.4)",
+    "--shadow": "0 0 20px rgba(140,0,255,0.3)"
+  },
+  deep: {
+    "--bg": "#02000a",
+    "--bg-alt": "#050014",
+    "--panel": "#08001a",
+    "--fg": "#f8dcff",
+    "--muted": "#a199ff",
+    "--accent": "#ff6cff",
+    "--accent-soft": "rgba(255,108,255,0.28)",
+    "--accent-glow": "rgba(255,108,255,0.38)",
+    "--accent-aux": "#35fff7",
+    "--accent-aux-soft": "rgba(53,255,247,0.24)",
+    "--panel-border": "rgba(255,108,255,0.45)",
+    "--shadow": "0 0 24px rgba(120,0,255,0.35)"
+  }
+};
+function applyPalette(palette){
+  Object.entries(palette).forEach(([key,val]) => document.documentElement.style.setProperty(key, val));
+}
+$("nightToggle").addEventListener("change", (e) => {
+  const on = e.target.checked;
+  applyPalette(on ? palettes.deep : palettes.neon);
+});
+applyPalette(palettes.neon);
+$("btnLocation").addEventListener("click", requestLocation);
+$("btnPreset").addEventListener("click", () => setLatLon(30.3670, -89.0928, true)); // Gulfport, MS
+$("btnMotion").addEventListener("click", enableMotion);
+$("btnHorizon").addEventListener("click", setHorizon);
+$("btnZenith").addEventListener("click", setZenith);
+$("btnAlign").addEventListener("click", alignToSelected);
+$("btnEasy").addEventListener("click", () => { const sorted = easyTonightIndices(); state.selectedIndex = sorted[0] || 0; populateSelect(sorted); });
+$("objSelect").addEventListener("change", (e)=>{ state.selectedIndex = parseInt(e.target.value,10) || 0; });
+$("btnSave").addEventListener("click", () => { const vlat = parseFloat($("lat").value), vlon = parseFloat($("lon").value); if (!isNaN(vlat) && !isNaN(vlon)) setLatLon(vlat, vlon, true); });
+$("btnClear").addEventListener("click", () => { localStorage.removeItem("dsc_lat"); localStorage.removeItem("dsc_lon"); alert("Saved location cleared."); });
+
+requestAnimationFrame(update);
+</script>
+</body>
+</html>
