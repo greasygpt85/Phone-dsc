@@ -1,5 +1,5 @@
 //@version=5
-indicator(title="Adaptive Multi-Factor Momentum Map", shorttitle="Adaptive MFM", overlay=false, max_bars_back=500, max_lines_count=500, max_labels_count=500)
+indicator(title="Adaptive Multi-Factor Momentum Map", shorttitle="Adapt MFM", overlay=false, max_bars_back=500, max_lines_count=500, max_labels_count=500)
 
 // --- Determine adaptive regime based on chart timeframe
 defaultSeconds = 60.0
@@ -8,46 +8,49 @@ f_resolveSeconds() =>
     if not na(_secs)
         _secs
     else
-        float _base = timeframe.multiplier * (timeframe.isintraday ? 60.0 : timeframe.isdaily ? 1440.0 * 60.0 : timeframe.isweekly ? 7.0 * 24.0 * 60.0 * 60.0 : timeframe.ismonthly ? 30.0 * 24.0 * 60.0 * 60.0 : defaultSeconds)
+        float _base = timeframe.multiplier * (timeframe.isintraday ? 60.0 : timeframe.isdaily ? 86400.0 : timeframe.isweekly ? 604800.0 : timeframe.ismonthly ? 2592000.0 : defaultSeconds)
         _base
 
-secs = math.max(defaultSeconds, f_resolveSeconds())
-mode = secs <= 60.0 ? "scalp" : secs <= 1800.0 ? "intraday" : secs <= 14400.0 ? "swing" : "position"
-rsiLen = switch mode
-    "scalp" => 7
-    "intraday" => 14
-    "swing" => 21
-    => 28
-emaLen = switch mode
-    "scalp" => 21
-    "intraday" => 34
-    "swing" => 55
-    => 89
-stochLen = switch mode
-    "scalp" => 9
-    "intraday" => 14
-    "swing" => 21
-    => 34
-adxLen = switch mode
-    "scalp" => 7
-    "intraday" => 14
-    "swing" => 21
-    => 28
-cciLen = switch mode
-    "scalp" => 14
-    "intraday" => 20
-    "swing" => 26
-    => 34
-thresholdHigh = switch mode
-    "scalp" => 0.7
-    "intraday" => 0.65
-    "swing" => 0.6
-    => 0.55
-thresholdLow = switch mode
-    "scalp" => -0.7
-    "intraday" => -0.65
-    "swing" => -0.6
-    => -0.55
+f_regimeSettings() =>
+    _secs = math.max(defaultSeconds, f_resolveSeconds())
+    string _mode = "position"
+    int _rsiLen = 28
+    int _emaLen = 89
+    int _stochLen = 34
+    int _adxLen = 28
+    int _cciLen = 34
+    float _highThr = 0.55
+    float _lowThr = -0.55
+    if _secs <= 60.0
+        _mode := "scalp"
+        _rsiLen := 7
+        _emaLen := 21
+        _stochLen := 9
+        _adxLen := 7
+        _cciLen := 14
+        _highThr := 0.7
+        _lowThr := -0.7
+    else if _secs <= 1800.0
+        _mode := "intraday"
+        _rsiLen := 14
+        _emaLen := 34
+        _stochLen := 14
+        _adxLen := 14
+        _cciLen := 20
+        _highThr := 0.65
+        _lowThr := -0.65
+    else if _secs <= 14400.0
+        _mode := "swing"
+        _rsiLen := 21
+        _emaLen := 55
+        _stochLen := 21
+        _adxLen := 21
+        _cciLen := 26
+        _highThr := 0.6
+        _lowThr := -0.6
+    [_mode, _rsiLen, _emaLen, _stochLen, _adxLen, _cciLen, _highThr, _lowThr]
+
+[mode, rsiLen, emaLen, stochLen, adxLen, cciLen, thresholdHigh, thresholdLow] = f_regimeSettings()
 
 // --- Indicator calculations
 rsiVal = ta.rsi(close, rsiLen)
@@ -82,8 +85,8 @@ weightTrend = mode == "scalp" ? 0.15 : mode == "intraday" ? 0.16 : mode == "swin
 weightCci = mode == "scalp" ? 0.15 : mode == "intraday" ? 0.14 : mode == "swing" ? 0.12 : 0.12
 weightRoc = mode == "scalp" ? 0.15 : mode == "intraday" ? 0.16 : mode == "swing" ? 0.16 : 0.17
 
-rawWeightedScore = normRsi * weightRsi + normMacd * weightMacd + normStoch * weightStoch + trendDirection * weightTrend + normCci * weightCci + normRoc * weightRoc
-weightedScore = math.tanh(rawWeightedScore)
+weightedScore = normRsi * weightRsi + normMacd * weightMacd + normStoch * weightStoch + trendDirection * weightTrend + normCci * weightCci + normRoc * weightRoc
+weightedScore := math.tanh(weightedScore)
 smoothScore = ta.ema(weightedScore, emaFastLen)
 
 // --- Forecast future bars using linear projection
@@ -105,9 +108,9 @@ plot(thresholdHigh, "Sell Threshold", color=color.new(color.red, 60))
 plot(thresholdLow, "Buy Threshold", color=color.new(color.lime, 60))
 fill(plotScore, plotZero, color=color.new(scoreColorBase, scoreAlpha))
 
-plot(forecast1, "H1 Forecast", color=color.new(color.orange, 40), offset=1, style=plot.style_linebr)
-plot(forecast2, "H2 Forecast", color=color.new(color.orange, 55), offset=2, style=plot.style_linebr)
-plot(forecast3, "H3 Forecast", color=color.new(color.orange, 70), offset=3, style=plot.style_linebr)
+plot(forecast1, "H+1 Forecast", color=color.new(color.orange, 40), offset=1, style=plot.style_linebr)
+plot(forecast2, "H+2 Forecast", color=color.new(color.orange, 55), offset=2, style=plot.style_linebr)
+plot(forecast3, "H+3 Forecast", color=color.new(color.orange, 70), offset=3, style=plot.style_linebr)
 
 plotshape(buySignal, title="Buy Signal", text="Buy", style=shape.labelup, color=color.new(color.green, 0), textcolor=color.white, location=location.bottom, size=size.tiny, offset=0)
 plotshape(sellSignal, title="Sell Signal", text="Sell", style=shape.labeldown, color=color.new(color.red, 0), textcolor=color.white, location=location.top, size=size.tiny, offset=0)
