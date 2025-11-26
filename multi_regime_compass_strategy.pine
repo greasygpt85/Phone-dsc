@@ -1,5 +1,13 @@
 //@version=5
-strategy(title="Multi-Regime Compass Strategy", shorttitle="Compass SRM", overlay=true, max_bars_back=500, initial_capital=100000, default_qty_type=strategy.percent_of_equity, default_qty_value=10)
+strategy(
+    title="Multi-Regime Compass Strategy",
+    shorttitle="Compass",
+    overlay=true,
+    max_bars_back=500,
+    initial_capital=100000,
+    default_qty_type=strategy.percent_of_equity,
+    default_qty_value=10
+)
 
 // --- Mode resolution
 modes = ["Auto", "Scalp", "Intraday", "Swing", "Position"]
@@ -83,18 +91,23 @@ longSignal = bullTrend and smoothScore > 0 and ta.crossover(score, 0)
 shortSignal = bearTrend and smoothScore < 0 and ta.crossunder(score, 0)
 
 // --- Risk management
-longStop = strategy.position_avg_price - atrVal * slMult
-longTake = strategy.position_avg_price + atrVal * tpMult
-shortStop = strategy.position_avg_price + atrVal * slMult
-shortTake = strategy.position_avg_price - atrVal * tpMult
+longBasisPrice = strategy.position_size > 0 ? strategy.position_avg_price : close
+shortBasisPrice = strategy.position_size < 0 ? strategy.position_avg_price : close
+longStop = longBasisPrice - atrVal * slMult
+longTake = longBasisPrice + atrVal * tpMult
+shortStop = shortBasisPrice + atrVal * slMult
+shortTake = shortBasisPrice - atrVal * tpMult
 
 if longSignal
     strategy.entry("Long", strategy.long)
 if shortSignal
     strategy.entry("Short", strategy.short)
 
-strategy.exit("LX", from_entry="Long", stop=longStop, limit=longTake, comment="SL/TP")
-strategy.exit("SX", from_entry="Short", stop=shortStop, limit=shortTake, comment="SL/TP")
+// Only place exits when we have exposure or are entering so stops anchor to current price
+if strategy.position_size > 0 or longSignal
+    strategy.exit("LX", from_entry="Long", stop=longStop, limit=longTake, comment="SL/TP")
+if strategy.position_size < 0 or shortSignal
+    strategy.exit("SX", from_entry="Short", stop=shortStop, limit=shortTake, comment="SL/TP")
 
 // --- Table with metrics
 var table statsTable = table.new(position.top_right, 1, 7, bgcolor=color.new(color.black, 80))
