@@ -1,0 +1,119 @@
+//@version=5
+strategy(title="Multi-Regime Compass Strategy", shorttitle="Compass SRM", overlay=true, max_bars_back=500, initial_capital=100000, default_qty_type=strategy.percent_of_equity, default_qty_value=10)
+
+// --- Mode resolution
+modes = ["Auto", "Scalp", "Intraday", "Swing", "Position"]
+selectedMode = input.string("Auto", "Mode", options=modes)
+
+resolveMode(_sel) =>
+    float _secs = timeframe.in_seconds(timeframe.period)
+    string _from_tf = _secs <= 60 ? "Scalp" : _secs <= 1800 ? "Intraday" : _secs <= 14400 ? "Swing" : "Position"
+    _sel == "Auto" ? _from_tf : _sel
+
+mode = resolveMode(selectedMode)
+
+// --- Parameter sets per mode
+emaFastLen = switch mode
+    "Scalp" => 9
+    "Intraday" => 15
+    "Swing" => 21
+    => 34
+emaSlowLen = switch mode
+    "Scalp" => 26
+    "Intraday" => 34
+    "Swing" => 55
+    => 89
+rsiLen = switch mode
+    "Scalp" => 7
+    "Intraday" => 14
+    "Swing" => 21
+    => 28
+atrLen = switch mode
+    "Scalp" => 7
+    "Intraday" => 14
+    "Swing" => 21
+    => 28
+slMult = switch mode
+    "Scalp" => 1.5
+    "Intraday" => 2.0
+    "Swing" => 2.5
+    => 3.0
+tpMult = switch mode
+    "Scalp" => 1.5
+    "Intraday" => 2.2
+    "Swing" => 3.0
+    => 3.8
+baseForecastBars = switch mode
+    "Scalp" => 2
+    "Intraday" => 3
+    "Swing" => 4
+    => 5
+
+// --- Core indicator calculations
+emaFast = ta.ema(close, emaFastLen)
+emaSlow = ta.ema(close, emaSlowLen)
+rsiVal = ta.rsi(close, rsiLen)
+atrVal = ta.atr(atrLen)
+trendSlope = ta.linreg(emaSlow, emaSlowLen, 0) - ta.linreg(emaSlow, emaSlowLen, 1)
+
+// --- Composite momentum score
+normRsi = (rsiVal - 50) / 50
+normSlope = math.tanh(trendSlope / math.max(atrVal / 2, 1e-6))
+normMacd = math.tanh((emaFast - emaSlow) / math.max(atrVal, 1e-6))
+score = (normRsi * 0.35 + normSlope * 0.35 + normMacd * 0.3)
+smoothScore = ta.ema(score, math.max(3, int(math.round(emaFastLen * 0.5))))
+
+// --- Forecast projection on score and price
+scoreSlope = smoothScore - smoothScore[1]
+forecastBars = input.int(3, "Forecast Bars", minval=1, maxval=6, tooltip="Number of bars to project the blended signal ahead")
+projectScore = smoothScore + scoreSlope * forecastBars
+priceSlope = close - close[1]
+projectPrice = close + priceSlope * baseForecastBars
+
+plot(smoothScore, "Blended Score", color=color.new(color.teal, 0), linewidth=2, display=display.none)
+plot(projectScore, "Projected Score", color=color.new(color.orange, 0), linewidth=1, style=plot.style_linebr, offset=forecastBars, display=display.none)
+plot(projectPrice, "Projected Price", color=color.new(color.yellow, 30), linewidth=2, offset=baseForecastBars)
+plot(emaFast, "Fast EMA", color=color.new(color.aqua, 0))
+plot(emaSlow, "Slow EMA", color=color.new(color.blue, 30))
+
+// --- Signal conditions
+bullTrend = emaFast > emaSlow and normSlope > 0
+bearTrend = emaFast < emaSlow and normSlope < 0
+longSignal = bullTrend and smoothScore > 0 and ta.crossover(score, 0)
+shortSignal = bearTrend and smoothScore < 0 and ta.crossunder(score, 0)
+
+// --- Risk management
+longStop = strategy.position_avg_price - atrVal * slMult
+longTake = strategy.position_avg_price + atrVal * tpMult
+shortStop = strategy.position_avg_price + atrVal * slMult
+shortTake = strategy.position_avg_price - atrVal * tpMult
+
+if longSignal
+    strategy.entry("Long", strategy.long)
+if shortSignal
+    strategy.entry("Short", strategy.short)
+
+strategy.exit("LX", from_entry="Long", stop=longStop, limit=longTake, comment="SL/TP")
+strategy.exit("SX", from_entry="Short", stop=shortStop, limit=shortTake, comment="SL/TP")
+
+// --- Table with metrics
+var table statsTable = table.new(position.top_right, 1, 7, bgcolor=color.new(color.black, 80))
+closedTrades = strategy.closedtrades
+wins = strategy.wintrades
+losses = strategy.losstrades
+winRate = closedTrades > 0 ? wins / closedTrades * 100 : na
+lossRate = closedTrades > 0 ? losses / closedTrades * 100 : na
+
+if barstate.islast
+    table.cell(statsTable, 0, 0, "Mode: " + mode, text_color=color.white)
+    table.cell(statsTable, 0, 1, "Score: " + str.tostring(smoothScore, format.percent))
+    table.cell(statsTable, 0, 2, "Projected: " + str.tostring(projectPrice, format.mintick))
+    table.cell(statsTable, 0, 3, "ATR SL/TP: " + str.tostring(slMult, format.mintick) + "x / " + str.tostring(tpMult, format.mintick))
+    table.cell(statsTable, 0, 4, "Closed: " + str.tostring(closedTrades))
+    table.cell(statsTable, 0, 5, "Win%: " + str.tostring(winRate, format.percent))
+    table.cell(statsTable, 0, 6, "Loss%: " + str.tostring(lossRate, format.percent))
+
+// --- Visual signal markers and background
+plotshape(longSignal, title="Long", text="LONG", style=shape.labelup, color=color.new(color.green, 0), textcolor=color.white, size=size.tiny)
+plotshape(shortSignal, title="Short", text="SHORT", style=shape.labeldown, color=color.new(color.red, 0), textcolor=color.white, size=size.tiny)
+bgcolor(longSignal ? color.new(color.green, 92) : shortSignal ? color.new(color.red, 92) : na)
