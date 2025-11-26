@@ -1,467 +1,514 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Phone DSC — Push-To (PWA)</title>
-<style>
-  :root {
-    --bg:#050013;
-    --bg-alt:#090021;
-    --fg:#f6f7ff;
-    --muted:#8a8fc4;
-    --accent:#ff36f8;
-    --accent-soft:rgba(255,54,248,0.32);
-    --accent-glow:rgba(255,54,248,0.35);
-    --accent-aux:#00f6ff;
-    --accent-aux-soft:rgba(0,246,255,0.22);
-    --panel:#0d0720;
-    --panel-border:rgba(160,90,255,0.4);
-    --good:#76ffb5;
-    --warn:#ffd166;
-    --shadow:0 0 20px rgba(140,0,255,0.3);
-  }
-  * { box-sizing: border-box; }
-  html, body {
-    margin:0; padding:0;
-    min-height:100%;
-    background: radial-gradient(circle at 20% 20%, var(--accent-soft), transparent 55%),
-                radial-gradient(circle at 80% 10%, var(--accent-aux-soft), transparent 60%),
-                linear-gradient(160deg, var(--bg) 0%, var(--bg-alt) 100%);
-    color: var(--fg);
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-  }
-  header {
-    position: sticky; top:0;
-    background: linear-gradient(120deg, var(--accent-soft), var(--accent-aux-soft)) var(--panel);
-    border-bottom: 1px solid var(--panel-border);
-    padding: 12px 14px; z-index: 10;
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(10px);
-  }
-  h1 { font-size: 20px; margin: 0 0 8px; line-height: 1.2; letter-spacing: 0.6px; text-transform: uppercase; text-shadow: 0 0 8px var(--accent-glow); }
-  .sub { color: var(--muted); font-size: 12px; text-shadow: 0 0 6px var(--accent-aux-soft); }
-  main { padding: 14px 16px 110px; }
-  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  .row > * { flex: 1 1 auto; }
-  button, select, input[type="number"], input[type="text"] {
-    background: rgba(12,6,30,0.85);
-    color:var(--fg);
-    border:1px solid var(--panel-border);
-    border-radius:12px;
-    padding:11px 13px;
-    font-size:15px;
-    box-shadow: 0 0 0 rgba(255,54,248,0);
-    transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
-  }
-  button { font-weight: 600; letter-spacing:0.4px; text-shadow:0 0 6px var(--accent-glow); }
-  button.primary {
-    background: linear-gradient(130deg, var(--accent-soft), var(--accent-aux-soft));
-    border-color: var(--accent);
-    box-shadow: 0 0 18px var(--accent-soft);
-  }
-  button.accent {
-    background: linear-gradient(130deg, var(--accent-aux-soft), var(--accent-soft));
-    border-color: var(--accent-aux);
-    color:#e8f9ff;
-    box-shadow: 0 0 20px var(--accent-aux-soft);
-  }
-  button:hover, select:focus, input:focus {
-    border-color: var(--accent-aux);
-    box-shadow: 0 0 22px var(--accent-glow);
-    transform: translateY(-1px);
-    outline:none;
-  }
-  select { appearance:none; background-image: linear-gradient(130deg, var(--accent-soft), var(--accent-aux-soft)); }
-  .panel {
-    background: linear-gradient(150deg, rgba(16,8,40,0.92), rgba(8,4,26,0.96));
-    border:1px solid var(--panel-border);
-    border-radius: 14px;
-    padding: 14px;
-    margin: 12px 0;
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(6px);
-  }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .kv { display:flex; justify-content:space-between; font-variant-numeric:tabular-nums; padding:7px 9px; background:rgba(12,6,30,0.75); border-radius:10px; border:1px solid rgba(160,90,255,0.25); box-shadow: inset 0 0 12px rgba(0,246,255,0.08); }
-  .kv small { color: var(--muted); text-shadow:0 0 4px var(--accent-aux-soft); }
-  .bad { color:#ff7b9c; text-shadow:0 0 8px rgba(255,123,156,0.45); }
-  .good { color: var(--good); text-shadow:0 0 8px rgba(118,255,181,0.5); }
-  .warn { color: var(--warn); text-shadow:0 0 8px rgba(255,209,102,0.45); }
-  .muted { color: var(--muted); }
-  .push { display:flex; gap:12px; }
-  .push .arrow {
-    flex:1 1 50%;
-    background: linear-gradient(140deg, var(--accent-aux-soft), var(--accent-soft));
-    border:1px solid var(--accent-aux);
-    border-radius:14px;
-    padding:18px;
-    text-align:center;font-size:18px; font-weight:700;
-    text-shadow:0 0 10px var(--accent-aux-soft);
-    box-shadow: 0 0 22px var(--accent-aux-soft);
-    transition: box-shadow .2s ease, transform .2s ease;
-  }
-  .push .arrow:hover { transform: translateY(-1px); box-shadow: 0 0 28px var(--accent-glow); }
-  .arrow.good { border-color: rgba(118,255,181,0.7); box-shadow: 0 0 26px rgba(118,255,181,0.4); }
-  .arrow.warn { border-color: rgba(255,209,102,0.7); box-shadow: 0 0 24px rgba(255,209,102,0.35); }
-  .arrow.bad { border-color: rgba(255,123,156,0.7); box-shadow: 0 0 24px rgba(255,123,156,0.35); }
-  .arrow .big { display:block; font-size:30px; margin-top:6px; letter-spacing:.7px; }
-  .tips { font-size:14px; line-height:1.45; }
-  .switch { position:relative; display:inline-block; width:54px; height:30px; vertical-align:middle; }
-  .switch input { display:none; }
-  .slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:rgba(80,70,130,0.6); transition:.2s; border-radius:30px; box-shadow: inset 0 0 12px rgba(0,0,0,0.35); }
-  .slider:before { position:absolute; content:""; height:22px; width:22px; left:4px; top:4px; background:linear-gradient(135deg, var(--accent), var(--accent-aux)); transition:.2s;border-radius:50%; box-shadow: 0 0 12px var(--accent-glow); }
-  input:checked + .slider { background: linear-gradient(135deg, var(--accent-soft), var(--accent-aux-soft)); box-shadow: 0 0 18px var(--accent-glow); }
-  input:checked + .slider:before { transform:translateX(24px); }
-  details summary { cursor:pointer; color:#d0cfff; text-shadow:0 0 8px var(--accent-glow); }
-  .footer { position:fixed; left:0; right:0; bottom:0; background:rgba(8,4,22,0.9); border-top:1px solid var(--panel-border); padding:10px 16px; display:flex; align-items:center; gap:10px; box-shadow:0 -4px 20px rgba(0,0,0,0.6); backdrop-filter: blur(10px); }
-  .footnote { font-size: 11px; color: var(--muted); }
-  .small { font-size: 12px; color: var(--muted); }
-  .banner { background:linear-gradient(135deg, var(--accent-soft), var(--accent-aux-soft)); border:1px solid var(--accent); color:#ffe7ff; padding:10px 12px; border-radius:12px; margin-bottom:12px; box-shadow:0 0 20px var(--accent-glow); }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solar System Gravity Well Sandbox</title>
+  <style>
+    :root {
+      --bg: #0b1026;
+      --panel: #101835;
+      --panel-border: rgba(255,255,255,0.12);
+      --accent: #8ddcff;
+      --accent-2: #ffd166;
+      --text: #f6f8ff;
+      --muted: #9bb0d3;
+      --shadow: 0 20px 40px rgba(0,0,0,0.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at 25% 20%, rgba(141,220,255,0.18), transparent 38%),
+                  radial-gradient(circle at 80% 0%, rgba(255,209,102,0.18), transparent 40%),
+                  linear-gradient(160deg, #060a1c 0%, #0b1531 100%);
+      color: var(--text);
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      padding: 16px 18px 12px;
+      background: rgba(9, 14, 32, 0.9);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--panel-border);
+      box-shadow: var(--shadow);
+    }
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: 0.4px;
+    }
+    .sub {
+      color: var(--muted);
+      margin-top: 4px;
+      font-size: 13px;
+    }
+    main {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 940px) {
+      main { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 12px 14px;
+      box-shadow: var(--shadow);
+    }
+    .controls { display: grid; gap: 10px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+    input[type="range"], select, button, input[type="color"] {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--panel-border);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 14px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+    }
+    input[type="range"] { padding: 0; accent-color: var(--accent); }
+    button { cursor: pointer; font-weight: 600; }
+    button:hover, select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 16px rgba(141,220,255,0.24); outline: none; }
+    button.primary { background: linear-gradient(135deg, rgba(141,220,255,0.35), rgba(141,220,255,0.18)); border-color: rgba(141,220,255,0.5); }
+    button.secondary { background: linear-gradient(135deg, rgba(255,209,102,0.24), rgba(255,209,102,0.12)); border-color: rgba(255,209,102,0.5); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .checkbox { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+    canvas { width: 100%; height: 78vh; border-radius: 16px; border: 1px solid var(--panel-border); background: radial-gradient(circle at 50% 50%, rgba(141,220,255,0.06), transparent 38%), #050a1b; box-shadow: var(--shadow); }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+    .stat { padding: 10px 12px; background: rgba(255,255,255,0.04); border-radius: 12px; border: 1px solid var(--panel-border); font-size: 13px; color: var(--muted); }
+    .stat strong { display: block; color: var(--text); font-size: 16px; margin-top: 4px; }
+    .pill-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pill { background: rgba(255,255,255,0.08); border: 1px solid var(--panel-border); border-radius: 999px; padding: 6px 12px; font-size: 12px; color: var(--muted); cursor: pointer; }
+    .pill:hover { border-color: var(--accent); color: var(--text); }
+    .legend { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  </style>
 </head>
 <body>
-<header>
-  <h1>Phone DSC — Push-To (PWA)</h1>
-  <div class="row">
-    <span class="sub">Allow <b>Location</b> and <b>Motion</b> permissions. If Location fails, use the preset or enter lat/lon manually.</span>
-    <label class="small">Night mode&nbsp;
-      <span class="switch"><input type="checkbox" id="nightToggle"><span class="slider"></span></span>
-    </label>
-  </div>
-</header>
-
-<main>
-  <div id="httpsWarn" class="banner" style="display:none;"></div>
-
-  <div class="panel">
-    <div class="row">
-      <button id="btnLocation" class="primary">Get Location</button>
-      <button id="btnPreset" class="accent">Use Gulfport, MS</button>
-      <input id="lat" type="number" step="0.0001" placeholder="Latitude" />
-      <input id="lon" type="number" step="0.0001" placeholder="Longitude" />
-    </div>
-    <div class="row" style="margin-top:8px;">
-      <button id="btnMotion" class="accent">Enable Motion/Compass</button>
-      <button id="btnHorizon">Set Horizon</button>
-      <button id="btnZenith">Set Zenith</button>
-      <button id="btnAlign">Align to Selected</button>
-      <button id="btnSave">Save Loc</button>
-      <button id="btnClear">Clear Loc</button>
-    </div>
-    <div class="grid" style="margin-top:10px;">
-      <div class="kv"><small>Lat</small><span id="latOut" class="muted">—</span></div>
-      <div class="kv"><small>Lon</small><span id="lonOut" class="muted">—</span></div>
-      <div class="kv"><small>LST (h)</small><span id="lstOut">—</span></div>
-      <div class="kv"><small>Time</small><span id="timeOut">—</span></div>
-    </div>
-  </div>
-
-  <div class="panel">
-    <div class="row">
-      <select id="objSelect" title="Targets"></select>
-      <button id="btnEasy">Easy Tonight</button>
-    </div>
-    <div class="grid" style="margin-top:10px;">
-      <div class="kv"><small>Target Alt</small><span id="tAlt">—</span></div>
-      <div class="kv"><small>Target Az</small><span id="tAz">—</span></div>
-      <div class="kv"><small>Scope Alt</small><span id="cAlt">—</span></div>
-      <div class="kv"><small>Scope Az</small><span id="cAz">—</span></div>
-    </div>
-    <div class="push" style="margin-top:10px;">
-      <div class="arrow" id="altArrow">ALT<span class="big" id="altDir">—</span></div>
-      <div class="arrow" id="azArrow">AZ<span class="big" id="azDir">—</span></div>
-    </div>
-  </div>
-
-  <div class="panel tips">
-    <details open>
-      <summary><b>How to use</b></summary>
-      <ol>
-        <li>Mount phone along the telescope tube; avoid large metal nearby for better compass accuracy.</li>
-        <li>Tap <b>Get Location</b> (requires HTTPS) or <b>Use Gulfport, MS</b>, or enter lat/lon then <b>Save Loc</b>.</li>
-        <li>Tap <b>Enable Motion/Compass</b> and grant permission.</li>
-        <li>Calibrate altitude: set <b>Horizon</b> then <b>Zenith</b>. Align azimuth on a known object using <b>Align to Selected</b>.</li>
-        <li>Select a target and follow arrows until both read 0°.</li>
-      </ol>
-      <p class="small">iPhone: Settings → Privacy & Security → Location Services → Safari Websites → <b>While Using</b> (+ Precise Location). Settings → Safari → Location → <b>Allow</b>.</p>
-    </details>
-  </div>
-
-  <div class="panel tips">
-    <details open>
-      <summary><b>Viewing tips for popular objects</b></summary>
-      <div id="tipsBox" class="small"></div>
-    </details>
-  </div>
-
-  <div class="panel">
-    <details>
-      <summary><b>Debug</b> (sensors & permissions)</summary>
-      <div class="grid">
-        <div class="kv"><small>Heading</small><span id="dbgHead">—</span></div>
-        <div class="kv"><small>Beta (tilt)</small><span id="dbgBeta">—</span></div>
-        <div class="kv"><small>Gamma (roll)</small><span id="dbgGamma">—</span></div>
-        <div class="kv"><small>Alt Cal</small><span id="dbgAltCal">—</span></div>
-        <div class="kv"><small>Az Offset</small><span id="dbgAzOff">—</span></div>
-        <div class="kv"><small>Secure</small><span id="dbgSecure">—</span></div>
-        <div class="kv"><small>Geo Err</small><span id="dbgGeoErr">—</span></div>
+  <header>
+    <h1>Solar System Gravity Well Sandbox</h1>
+    <div class="sub">Click to place bodies, drag to set particle velocities, and explore smooth orbits with a light UI.</div>
+  </header>
+  <main>
+    <section class="panel">
+      <div class="controls">
+        <div>
+          <label>Placement mode</label>
+          <div class="row">
+            <button id="modeMass" class="primary">Place massive body</button>
+            <button id="modeParticle" class="secondary">Place test particle</button>
+          </div>
+        </div>
+        <div>
+          <label>Mass for new massive body (<span id="massLabel">1.0e5</span>)</label>
+          <input type="range" id="massSlider" min="1e2" max="2e6" step="1e2" value="1e5">
+        </div>
+        <div>
+          <label>Test particle mass presets</label>
+          <select id="testMassSelect"></select>
+        </div>
+        <div>
+          <label>Test particle color</label>
+          <input type="color" id="colorPicker" value="#7ad8ff">
+        </div>
+        <div>
+          <label>Global time scale <span id="timeLabel">1.0x</span></label>
+          <input type="range" id="timeSlider" min="0.2" max="10" step="0.1" value="1">
+        </div>
+        <div class="checkbox">
+          <input type="checkbox" id="trailToggle" checked>
+          <span>Show trails</span>
+        </div>
+        <div class="checkbox">
+          <input type="checkbox" id="energyToggle" checked>
+          <span>Show energy readout</span>
+        </div>
+        <div class="row">
+          <button id="resetView">Reset view</button>
+          <button id="clearAll">Clear all</button>
+        </div>
+        <div class="row">
+          <button id="loadSolar" class="primary">Load solar preset</button>
+          <button id="addSun">Drop sun at center</button>
+        </div>
+        <div>
+          <label>Selected particle</label>
+          <select id="particleSelect"></select>
+        </div>
+        <div class="stats">
+          <div class="stat">Kinetic Energy<strong id="ke">—</strong></div>
+          <div class="stat">Potential Energy<strong id="pe">—</strong></div>
+          <div class="stat">Total Energy<strong id="te">—</strong></div>
+        </div>
+        <div class="legend">
+          • Left click in the canvas to place a massive body. <br>
+          • In test particle mode, click to set a start point then drag and release to set the launch velocity. <br>
+          • Drag with the right mouse button (or hold Space) to pan; scroll to zoom. <br>
+          • Energy is computed from the selected particle versus all massive bodies.
+        </div>
       </div>
-    </details>
-  </div>
-</main>
+    </section>
+    <section class="panel" style="overflow:hidden;">
+      <canvas id="sim" width="1200" height="800"></canvas>
+    </section>
+  </main>
 
-<footer class="footer">
-  <span class="footnote">If location fails, host this file over HTTPS (GitHub Pages/Netlify) or use manual/preset.</span>
-</footer>
-<script>if ('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js').catch(console.error));}</script>
+  <script>
+    const canvas = document.getElementById('sim');
+    const ctx = canvas.getContext('2d');
+    let width = canvas.clientWidth, height = canvas.clientHeight;
+    let mode = 'mass';
+    let placingStart = null;
+    let camera = { x: 0, y: 0, zoom: 1 };
+    let isPanning = false;
+    let panStart = { x: 0, y: 0, camX: 0, camY: 0 };
 
-<script>
-const DEG2RAD = Math.PI/180, RAD2DEG = 180/Math.PI;
-function mod(n, m) { return ((n % m) + m) % m; }
-function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
-function julianDate(date) { return date.getTime() / 86400000 + 2440587.5; }
-function gmstHours(date) { const JD = julianDate(date); const d = JD - 2451545.0; let GMST = 18.697374558 + 24.06570982441908 * d; return mod(GMST, 24); }
-function lstHours(date, lonDeg) { return mod(gmstHours(date) + lonDeg/15, 24); }
-function radecToAltAz(raHours, decDeg, latDeg, lonDeg, date) {
-  const LST = lstHours(date, lonDeg);
-  const HA_h = mod(LST - raHours + 24, 24);
-  const HA = HA_h * 15 * DEG2RAD;
-  const dec = decDeg * DEG2RAD;
-  const lat = latDeg * DEG2RAD;
-  const sinAlt = Math.sin(dec)*Math.sin(lat) + Math.cos(dec)*Math.cos(lat)*Math.cos(HA);
-  const alt = Math.asin(clamp(sinAlt, -1, 1));
-  const y = -Math.sin(HA)*Math.cos(dec);
-  const x = Math.sin(dec)*Math.cos(lat) - Math.cos(dec)*Math.sin(lat)*Math.cos(HA);
-  let az = Math.atan2(y, x);
-  az = mod(az * RAD2DEG, 360);
-  return { altDeg: alt * RAD2DEG, azDeg: az, LST };
-}
-function angDiff(target, current) { return mod((target - current) + 180, 360) - 180; }
+    const G = 0.05;
+    const massScale = 1e-24; // shrink real masses to sandbox scale
+    const baseTrailLength = 160;
 
-const OBJECTS = [
-  ["Polaris (α UMi)", "Star (double)", 2 + 31/60 + 49/3600, 89 + 15/60 + 51/3600, 2.0, "Great for azimuth alignment. Fixed near north; at Gulf Coast its altitude roughly equals your latitude."],
-  ["M31 Andromeda", "Galaxy", 0 + 42/60 + 44/3600, 41 + 16/60 + 9/3600, 3.4, "Use low power (25–40×) and a wide field. Dark skies help. Try sweeping to catch its extended halo."],
-  ["M13 Hercules", "Globular cluster", 16 + 41/60 + 41/3600, 36 + 28/60, 5.8, "Medium power (80–150×). Averted vision resolves edge stars in 6–10\" scopes."],
-  ["M57 Ring (Lyra)", "Planetary nebula", 18 + 53/60 + 35/3600, 33 + 2/60, 8.8, "Start ~80× to spot the smoke ring; OIII/UHC filter boosts contrast. 150–200× shows the hole well."],
-  ["M27 Dumbbell", "Planetary nebula", 19 + 59/60 + 36/3600, 22 + 43/60, 7.5, "Low–medium power. OIII/UHC filter helps. Large, bright, easy in suburban skies."],
-  ["M45 Pleiades", "Open cluster", 3 + 47/60 + 24/3600, 24 + 7/60, 1.6, "Very low power (20–30×). Best framed with a wide-field eyepiece; nebulosity needs dark skies."],
-  ["M42 Orion Nebula", "Emission nebula", 5 + 35/60 + 17/3600, -5 - 23/60 - 28/3600, 4.0, "Use 40–100×. UHC filter enhances structure. Split the Trapezium at higher power."],
-  ["M8 Lagoon", "Emission nebula", 18 + 3/60, -24 - 23/60, 6.0, "Wide field + UHC/OIII. Also look for open cluster NGC 6530 on the edge."],
-  ["M20 Trifid", "Emission/reflection", 18 + 2/60, -23 - 2/60, 6.3, "Medium power. OIII helps the dark lanes; reflection part stands out without filter."],
-  ["M22 (Sagittarius)", "Globular cluster", 18 + 36/60, -23 - 54/60, 5.1, "Medium–high power resolves rich star field; low altitude from mid-latitudes."],
-  ["M11 Wild Duck", "Open cluster", 18 + 51/60, -6 - 16/60, 6.3, "Medium power. Very rich; resembles a flying V at 80–120×."],
-  ["Albireo (β Cyg)", "Double star", 19 + 30/60 + 43/3600, 27 + 57/60 + 34/3600, 3.1, "Gorgeous color contrast double. Split cleanly at ~50×."],
-  ["Double Cluster (h/χ Per)", "Open clusters", 2 + 20/60, 57 + 8/60, 4.3, "Use 30–60× to frame both clusters in one field; rich star clouds."],
-  ["M7 Ptolemy", "Open cluster", 17 + 53/60, -34 - 49/60, 3.3, "Very low power. Low altitude; best from dark southern horizons."],
-  ["M6 Butterfly", "Open cluster", 17 + 40/60, -32 - 13/60, 4.2, "Low power; distinctive butterfly pattern."],
-  ["M4 (Scorpius)", "Globular cluster", 16 + 23/60, -26 - 32/60, 5.6, "Medium power; central bar of stars is visible in small scopes."],
-  ["M81 Bode's", "Galaxy", 9 + 55/60 + 33/3600, 69 + 3/60 + 55/3600, 6.9, "Pair with M82 at low–medium power; dark skies help a lot."],
-  ["M82 Cigar", "Galaxy", 9 + 55/60 + 53/3600, 69 + 40/60 + 57/3600, 8.4, "Edge-on galaxy—look for mottled dust lane at ~100×."],
-  ["M51 Whirlpool", "Galaxy", 13 + 29/60 + 52/3600, 47 + 11/60 + 43/3600, 8.4, "Dark skies needed; spiral hints at 120–180× with averted vision."],
-  ["Saturn (approx)", "Planet", 23.0, -6.0, 1.0, "Use 150–250× in steady seeing. Cassini Division pops in good moments."]
-];
+    const bodies = [];
+    const particles = [];
 
-function tipsHTML(){ return OBJECTS.map(o => `<div style="padding:4px 0;"><b>${o[0]}</b> — <i>${o[1]}</i>. ${o[5]}</div>`).join(""); }
-const state = { lat:null, lon:null, lst:null, selectedIndex:0, heading:null, beta:null, gamma:null, altCal:{a:null,b:null,betaH:null,betaZ:null}, azOffset:0, running:false, watchId:null };
-const $ = id => document.getElementById(id);
+    const massSlider = document.getElementById('massSlider');
+    const massLabel = document.getElementById('massLabel');
+    const timeSlider = document.getElementById('timeSlider');
+    const timeLabel = document.getElementById('timeLabel');
+    const trailToggle = document.getElementById('trailToggle');
+    const energyToggle = document.getElementById('energyToggle');
+    const particleSelect = document.getElementById('particleSelect');
+    const testMassSelect = document.getElementById('testMassSelect');
+    const colorPicker = document.getElementById('colorPicker');
 
-document.addEventListener('DOMContentLoaded', () => { $("tipsBox").innerHTML = tipsHTML(); populateSelect(); loadSavedLoc(); });
+    const keOut = document.getElementById('ke');
+    const peOut = document.getElementById('pe');
+    const teOut = document.getElementById('te');
 
-function populateSelect(sortedIndices = null) {
-  const sel = $("objSelect");
-  sel.innerHTML = "";
-  const indices = sortedIndices ?? OBJECTS.map((_,i)=>i);
-  indices.forEach(i => {
-    const o = OBJECTS[i];
-    const opt = document.createElement("option");
-    opt.value = i;
-    opt.textContent = `${o[0]} — ${o[1]}`;
-    sel.appendChild(opt);
-  });
-  sel.value = state.selectedIndex;
-}
-
-function setLatLon(lat, lon, persist=false) {
-  state.lat = lat; state.lon = lon;
-  $("lat").value = lat.toFixed(4);
-  $("lon").value = lon.toFixed(4);
-  $("latOut").textContent = lat.toFixed(4);
-  $("lonOut").textContent = lon.toFixed(4);
-  if (persist) { localStorage.setItem("dsc_lat", String(lat)); localStorage.setItem("dsc_lon", String(lon)); }
-}
-function loadSavedLoc() {
-  const slat = localStorage.getItem("dsc_lat");
-  const slon = localStorage.getItem("dsc_lon");
-  if (slat && slon && !isNaN(parseFloat(slat)) && !isNaN(parseFloat(slon))) setLatLon(parseFloat(slat), parseFloat(slon));
-}
-
-function explainGeoError(code, message) {
-  let hint = "";
-  switch (code) {
-    case 1: hint = "Permission denied. iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using (+ Precise)."; break;
-    case 2: hint = "Position unavailable. Move to open sky or toggle Airplane Mode off/on."; break;
-    case 3: hint = "Timed out. Try again. Many browsers block geolocation on non-HTTPS pages."; break;
-    default: hint = "Unknown error. Many browsers require HTTPS for geolocation.";
-  }
-  $("dbgGeoErr").textContent = (message || "error") + " — " + hint;
-  alert("Location error: " + (message || "error") + "\\n\\n" + hint);
-}
-
-function requestLocation() {
-  if (!navigator.geolocation) { alert("Geolocation not supported."); return; }
-  try {
-    if (state.watchId != null) navigator.geolocation.clearWatch(state.watchId);
-    state.watchId = navigator.geolocation.watchPosition(pos => {
-      setLatLon(pos.coords.latitude, pos.coords.longitude);
-      if (state.watchId != null) { navigator.geolocation.clearWatch(state.watchId); state.watchId = null; }
-    }, err => { explainGeoError(err.code, err.message); }, { enableHighAccuracy:true, maximumAge:2000, timeout:15000 });
-  } catch (e) {
-    navigator.geolocation.getCurrentPosition(pos => setLatLon(pos.coords.latitude, pos.coords.longitude),
-      err => explainGeoError(err.code, err.message), { enableHighAccuracy:true, timeout:10000 });
-  }
-}
-
-function onDeviceOrientation(e) {
-  let heading = null;
-  if (typeof e.webkitCompassHeading === "number" && !isNaN(e.webkitCompassHeading)) heading = e.webkitCompassHeading;
-  else if (e.absolute && typeof e.alpha === "number") heading = 360 - e.alpha;
-  else if (typeof e.alpha === "number") heading = 360 - e.alpha;
-  if (heading != null) state.heading = mod(heading, 360);
-  state.beta = (typeof e.beta === "number") ? e.beta : state.beta;
-  state.gamma = (typeof e.gamma === "number") ? e.gamma : state.gamma;
-  $("dbgHead").textContent = state.heading != null ? state.heading.toFixed(1) + "°" : "—";
-  $("dbgBeta").textContent = state.beta != null ? state.beta.toFixed(1) + "°" : "—";
-  $("dbgGamma").textContent = state.gamma != null ? state.gamma.toFixed(1) + "°" : "—";
-}
-
-async function enableMotion() {
-  try {
-    if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
-      const resp = await DeviceOrientationEvent.requestPermission();
-      if (resp !== "granted") { alert("Motion permission denied."); return; }
+    function updateLabels() {
+      massLabel.textContent = Number(massSlider.value).toExponential(2);
+      timeLabel.textContent = `${Number(timeSlider.value).toFixed(1)}x`;
     }
-    window.addEventListener("deviceorientation", onDeviceOrientation, true);
-    state.running = true;
-  } catch (e) { alert("Motion permission failed: " + e); }
-}
 
-function setHorizon() { if (state.beta == null) { alert("No tilt reading yet — move the phone to wake sensors."); return; } state.altCal.betaH = state.beta; computeAltCalibration(); }
-function setZenith() { if (state.beta == null) { alert("No tilt reading yet — move the phone to wake sensors."); return; } state.altCal.betaZ = state.beta; computeAltCalibration(); }
-function computeAltCalibration() {
-  const { betaH, betaZ } = state.altCal;
-  if (betaH == null || betaZ == null || Math.abs(betaZ - betaH) < 5) { $("dbgAltCal").textContent = "—"; state.altCal.a = null; state.altCal.b = null; return; }
-  const a = 90 / (betaZ - betaH); const b = -a * betaH; state.altCal.a = a; state.altCal.b = b; $("dbgAltCal").textContent = `a=${a.toFixed(3)}, b=${b.toFixed(2)}`;
-}
-function currentAltFromTilt() { if (state.altCal.a == null || state.beta == null) return null; return clamp(state.altCal.a * state.beta + state.altCal.b, -5, 95); }
+    function addMassBody(x, y, mass, color = '#ff9ff3') {
+      bodies.push({ x, y, mass, color, radius: Math.max(4, Math.log10(mass + 10)) });
+    }
 
-function alignToSelected() {
-  const idx = parseInt($("objSelect").value, 10); if (isNaN(idx)) return;
-  const o = OBJECTS[idx];
-  if (state.lat == null || state.lon == null) { alert("Set your location first."); return; }
-  if (state.heading == null) { alert("Compass not ready."); return; }
-  const now = new Date();
-  const pos = radecToAltAz(o[2], o[3], state.lat, state.lon, now);
-  const altM = currentAltFromTilt(); const azM = state.heading;
-  if (altM == null) { state.azOffset = angDiff(pos.azDeg, azM); }
-  else { state.azOffset = angDiff(pos.azDeg, azM); const altOff = pos.altDeg - altM; state.altCal.b += altOff; }
-  $("dbgAzOff").textContent = state.azOffset.toFixed(1) + "°";
-}
+    function addParticle(x, y, vx, vy, mass, color, name = 'Particle') {
+      const id = crypto.randomUUID();
+      particles.push({ id, name, x, y, vx, vy, mass, color, trail: [] });
+      refreshParticleSelect();
+      particleSelect.value = id;
+    }
 
-function easyTonightIndices() {
-  if (state.lat == null || state.lon == null) return OBJECTS.map((_,i)=>i);
-  const now = new Date();
-  const scored = OBJECTS.map((o, i) => {
-    const pos = radecToAltAz(o[2], o[3], state.lat, state.lon, now);
-    const alt = pos.altDeg; const mag = o[4]; const visible = alt > 15;
-    const score = (visible ? alt : -90) + (8 - (mag||8)) * 4;
-    return { i, score, alt, az: pos.azDeg, mag };
-  });
-  scored.sort((a,b)=>b.score - a.score);
-  return scored.map(s=>s.i);
-}
+    function refreshParticleSelect() {
+      particleSelect.innerHTML = '';
+      particles.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.name} (${p.mass.toExponential(2)})`;
+        particleSelect.appendChild(opt);
+      });
+      if (!particles.length) {
+        const opt = document.createElement('option');
+        opt.textContent = 'None';
+        opt.disabled = true;
+        opt.selected = true;
+        particleSelect.appendChild(opt);
+      }
+    }
 
-function update() {
-  const now = new Date();
-  $("timeOut").textContent = now.toLocaleTimeString();
-  $("dbgSecure").textContent = window.isSecureContext ? "HTTPS/secure" : "NOT secure";
-  if (!window.isSecureContext) {
-    const warn = document.getElementById("httpsWarn");
-    warn.style.display = "block";
-    warn.textContent = "Location usually requires HTTPS. Host this file (GitHub Pages/Netlify) or use the preset/manual entry.";
-  }
-  if (state.lat != null && state.lon != null) {
-    const lst = lstHours(now, state.lon);
-    state.lst = lst; $("lstOut").textContent = lst.toFixed(3);
-    $("latOut").textContent = state.lat.toFixed(4); $("lonOut").textContent = state.lon.toFixed(4);
-  }
-  const selIdx = parseInt($("objSelect").value, 10);
-  if (!isNaN(selIdx) && state.lat != null && state.lon != null) {
-    const o = OBJECTS[selIdx]; const pos = radecToAltAz(o[2], o[3], state.lat, state.lon, now);
-    $("tAlt").textContent = pos.altDeg.toFixed(1) + "°"; $("tAz").textContent = pos.azDeg.toFixed(1) + "°";
-    let cAz = null, cAlt = null;
-    if (state.heading != null) cAz = mod(state.heading + state.azOffset, 360);
-    if (state.beta != null) { const altFromTilt = currentAltFromTilt(); cAlt = (altFromTilt != null) ? altFromTilt : null; }
-    $("cAz").textContent = (cAz!=null) ? cAz.toFixed(1) + "°" : "—";
-    $("cAlt").textContent = (cAlt!=null) ? cAlt.toFixed(1) + "°" : "—";
-    let dAzText = "—", dAltText = "—"; let azClass = "", altClass = "";
-    if (cAz != null) { const dAz = angDiff(pos.azDeg, cAz); const lr = dAz > 1 ? "RIGHT" : (dAz < -1 ? "LEFT" : "OK"); dAzText = (lr === "OK") ? "0°" : `${lr} ${Math.abs(dAz).toFixed(0)}°`; azClass = Math.abs(dAz) <= 2 ? "good" : (Math.abs(dAz) <= 10 ? "warn" : "bad"); }
-    if (cAlt != null) { const dAlt = pos.altDeg - cAlt; const ud = dAlt > 1 ? "UP" : (dAlt < -1 ? "DOWN" : "OK"); dAltText = (ud === "OK") ? "0°" : `${ud} ${Math.abs(dAlt).toFixed(0)}°`; altClass = Math.abs(dAlt) <= 2 ? "good" : (Math.abs(dAlt) <= 10 ? "warn" : "bad"); }
-    $("azDir").textContent = dAzText; $("altDir").textContent = dAltText; $("azArrow").className = "arrow " + azClass; $("altArrow").className = "arrow " + altClass;
-  }
-  requestAnimationFrame(update);
-}
+    function screenToWorld(px, py) {
+      const x = (px - width / 2) / camera.zoom + camera.x;
+      const y = (py - height / 2) / camera.zoom + camera.y;
+      return { x, y };
+    }
 
-const palettes = {
-  neon: {
-    "--bg": "#050013",
-    "--bg-alt": "#090021",
-    "--panel": "#0d0720",
-    "--fg": "#f6f7ff",
-    "--muted": "#8a8fc4",
-    "--accent": "#ff36f8",
-    "--accent-soft": "rgba(255,54,248,0.32)",
-    "--accent-glow": "rgba(255,54,248,0.35)",
-    "--accent-aux": "#00f6ff",
-    "--accent-aux-soft": "rgba(0,246,255,0.22)",
-    "--panel-border": "rgba(160,90,255,0.4)",
-    "--shadow": "0 0 20px rgba(140,0,255,0.3)"
-  },
-  deep: {
-    "--bg": "#02000a",
-    "--bg-alt": "#050014",
-    "--panel": "#08001a",
-    "--fg": "#f8dcff",
-    "--muted": "#a199ff",
-    "--accent": "#ff6cff",
-    "--accent-soft": "rgba(255,108,255,0.28)",
-    "--accent-glow": "rgba(255,108,255,0.38)",
-    "--accent-aux": "#35fff7",
-    "--accent-aux-soft": "rgba(53,255,247,0.24)",
-    "--panel-border": "rgba(255,108,255,0.45)",
-    "--shadow": "0 0 24px rgba(120,0,255,0.35)"
-  }
-};
-function applyPalette(palette){
-  Object.entries(palette).forEach(([key,val]) => document.documentElement.style.setProperty(key, val));
-}
-$("nightToggle").addEventListener("change", (e) => {
-  const on = e.target.checked;
-  applyPalette(on ? palettes.deep : palettes.neon);
-});
-applyPalette(palettes.neon);
-$("btnLocation").addEventListener("click", requestLocation);
-$("btnPreset").addEventListener("click", () => setLatLon(30.3670, -89.0928, true)); // Gulfport, MS
-$("btnMotion").addEventListener("click", enableMotion);
-$("btnHorizon").addEventListener("click", setHorizon);
-$("btnZenith").addEventListener("click", setZenith);
-$("btnAlign").addEventListener("click", alignToSelected);
-$("btnEasy").addEventListener("click", () => { const sorted = easyTonightIndices(); state.selectedIndex = sorted[0] || 0; populateSelect(sorted); });
-$("objSelect").addEventListener("change", (e)=>{ state.selectedIndex = parseInt(e.target.value,10) || 0; });
-$("btnSave").addEventListener("click", () => { const vlat = parseFloat($("lat").value), vlon = parseFloat($("lon").value); if (!isNaN(vlat) && !isNaN(vlon)) setLatLon(vlat, vlon, true); });
-$("btnClear").addEventListener("click", () => { localStorage.removeItem("dsc_lat"); localStorage.removeItem("dsc_lon"); alert("Saved location cleared."); });
+    function worldToScreen(x, y) {
+      return {
+        x: (x - camera.x) * camera.zoom + width / 2,
+        y: (y - camera.y) * camera.zoom + height / 2
+      };
+    }
 
-requestAnimationFrame(update);
-</script>
+    function integrate(dt) {
+      particles.forEach(p => {
+        let ax = 0, ay = 0;
+        bodies.forEach(b => {
+          const dx = b.x - p.x;
+          const dy = b.y - p.y;
+          const distSq = dx * dx + dy * dy + 1e-6;
+          const dist = Math.sqrt(distSq);
+          const force = (G * b.mass) / distSq;
+          ax += force * (dx / dist);
+          ay += force * (dy / dist);
+        });
+        p.vx += ax * dt;
+        p.vy += ay * dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        if (trailToggle.checked) {
+          p.trail.push({ x: p.x, y: p.y });
+          if (p.trail.length > baseTrailLength) p.trail.shift();
+        } else {
+          p.trail.length = 0;
+        }
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+
+      ctx.save();
+      ctx.translate(width / 2, height / 2);
+      ctx.scale(camera.zoom, camera.zoom);
+      ctx.translate(-camera.x, -camera.y);
+
+      // glow backdrop
+      bodies.forEach(b => {
+        const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, Math.max(80, b.radius * 14));
+        grad.addColorStop(0, `${b.color}55`);
+        grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, Math.max(80, b.radius * 14), 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // trails
+      particles.forEach(p => {
+        if (!trailToggle.checked || p.trail.length < 2) return;
+        ctx.strokeStyle = `${p.color}aa`;
+        ctx.lineWidth = 1 / camera.zoom;
+        ctx.beginPath();
+        p.trail.forEach((pt, idx) => {
+          if (idx === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+        });
+        ctx.stroke();
+      });
+
+      // bodies
+      bodies.forEach(b => {
+        ctx.fillStyle = b.color;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff22';
+        ctx.lineWidth = 1 / camera.zoom;
+        ctx.stroke();
+      });
+
+      // particles
+      particles.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3 / camera.zoom, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // velocity preview
+      if (placingStart) {
+        ctx.strokeStyle = '#8ddcff';
+        ctx.lineWidth = 1.5 / camera.zoom;
+        ctx.beginPath();
+        ctx.moveTo(placingStart.x, placingStart.y);
+        ctx.lineTo(mouseWorld.x, mouseWorld.y);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    let lastTime = performance.now();
+    function loop(ts) {
+      width = canvas.clientWidth;
+      height = canvas.clientHeight;
+      canvas.width = width * devicePixelRatio;
+      canvas.height = height * devicePixelRatio;
+      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+
+      const dt = Math.min((ts - lastTime) / 1000, 0.05) * Number(timeSlider.value);
+      lastTime = ts;
+      integrate(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // Interaction
+    let mouseWorld = { x: 0, y: 0 };
+    canvas.addEventListener('mousemove', e => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      mouseWorld = screenToWorld(x, y);
+      if (isPanning) {
+        const dx = (x - panStart.x) / camera.zoom;
+        const dy = (y - panStart.y) / camera.zoom;
+        camera.x = panStart.camX - dx;
+        camera.y = panStart.camY - dy;
+      }
+    });
+
+    canvas.addEventListener('mousedown', e => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      mouseWorld = screenToWorld(x, y);
+
+      if (e.button === 2 || e.metaKey || e.altKey || e.buttons === 4 || e.shiftKey || e.code === 'Space') {
+        isPanning = true;
+        panStart = { x, y, camX: camera.x, camY: camera.y };
+        return;
+      }
+
+      if (mode === 'mass') {
+        addMassBody(mouseWorld.x, mouseWorld.y, Number(massSlider.value), '#f5b6ff');
+      } else if (mode === 'particle') {
+        if (!placingStart) {
+          placingStart = { x: mouseWorld.x, y: mouseWorld.y };
+        }
+      }
+    });
+
+    canvas.addEventListener('mouseup', e => {
+      if (isPanning) { isPanning = false; return; }
+      if (mode === 'particle' && placingStart) {
+        const launchPoint = placingStart;
+        placingStart = null;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const end = screenToWorld(x, y);
+        const vx = (end.x - launchPoint.x) * 0.6;
+        const vy = (end.y - launchPoint.y) * 0.6;
+        const selectedMass = Number(testMassSelect.value);
+        addParticle(launchPoint.x, launchPoint.y, vx, vy, selectedMass, colorPicker.value, testMassSelect.selectedOptions[0].textContent);
+      }
+    });
+
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY > 0 ? 0.92 : 1.08;
+      const worldBefore = screenToWorld(e.offsetX, e.offsetY);
+      camera.zoom = Math.min(4, Math.max(0.2, camera.zoom * zoomFactor));
+      const worldAfter = screenToWorld(e.offsetX, e.offsetY);
+      camera.x += worldBefore.x - worldAfter.x;
+      camera.y += worldBefore.y - worldAfter.y;
+    }, { passive: false });
+
+    document.getElementById('resetView').addEventListener('click', () => {
+      camera = { x: 0, y: 0, zoom: 1 };
+    });
+
+    document.getElementById('clearAll').addEventListener('click', () => {
+      bodies.length = 0;
+      particles.length = 0;
+      refreshParticleSelect();
+    });
+
+    document.getElementById('modeMass').addEventListener('click', () => {
+      mode = 'mass';
+      document.getElementById('modeMass').classList.add('primary');
+      document.getElementById('modeParticle').classList.remove('primary');
+    });
+
+    document.getElementById('modeParticle').addEventListener('click', () => {
+      mode = 'particle';
+      document.getElementById('modeParticle').classList.add('primary');
+      document.getElementById('modeMass').classList.remove('primary');
+    });
+
+    massSlider.addEventListener('input', updateLabels);
+    timeSlider.addEventListener('input', updateLabels);
+
+    document.getElementById('addSun').addEventListener('click', () => {
+      const sunMass = 1.988e30 * massScale;
+      addMassBody(0, 0, sunMass, '#ffd166');
+    });
+
+    document.getElementById('loadSolar').addEventListener('click', () => {
+      bodies.length = 0;
+      particles.length = 0;
+      const sunMass = 1.988e30 * massScale;
+      addMassBody(0, 0, sunMass, '#ffd166');
+      const planets = [
+        { name: 'Mercury', dist: 70, mass: 3.30e23 },
+        { name: 'Venus', dist: 100, mass: 4.87e24 },
+        { name: 'Earth', dist: 140, mass: 5.97e24 },
+        { name: 'Mars', dist: 180, mass: 6.42e23 },
+        { name: 'Jupiter', dist: 260, mass: 1.90e27 },
+        { name: 'Saturn', dist: 340, mass: 5.68e26 },
+        { name: 'Uranus', dist: 420, mass: 8.68e25 },
+        { name: 'Neptune', dist: 500, mass: 1.02e26 }
+      ];
+      planets.forEach(p => {
+        const mass = p.mass * massScale;
+        const r = p.dist;
+        const v = Math.sqrt((G * sunMass) / r);
+        addParticle(r, 0, 0, v, mass, '#7ad8ff', p.name);
+      });
+      refreshParticleSelect();
+    });
+
+    testMassSelect.innerHTML = '';
+    const massOptions = [
+      { name: 'Custom tiny (1e3)', mass: 1e3 },
+      { name: 'Mercury mass', mass: 3.30e23 * massScale },
+      { name: 'Venus mass', mass: 4.87e24 * massScale },
+      { name: 'Earth mass', mass: 5.97e24 * massScale },
+      { name: 'Mars mass', mass: 6.42e23 * massScale },
+      { name: 'Jupiter mass', mass: 1.90e27 * massScale },
+      { name: 'Saturn mass', mass: 5.68e26 * massScale },
+      { name: 'Uranus mass', mass: 8.68e25 * massScale },
+      { name: 'Neptune mass', mass: 1.02e26 * massScale }
+    ];
+    massOptions.forEach((m, idx) => {
+      const opt = document.createElement('option');
+      opt.value = m.mass;
+      opt.textContent = m.name;
+      if (idx === 3) opt.selected = true;
+      testMassSelect.appendChild(opt);
+    });
+
+    function energyFor(particle) {
+      let ke = 0.5 * particle.mass * (particle.vx * particle.vx + particle.vy * particle.vy);
+      let pe = 0;
+      bodies.forEach(b => {
+        const dx = b.x - particle.x;
+        const dy = b.y - particle.y;
+        const dist = Math.sqrt(dx * dx + dy * dy + 1e-6);
+        pe += -G * particle.mass * b.mass / dist;
+      });
+      return { ke, pe, te: ke + pe };
+    }
+
+    function updateEnergyReadout() {
+      if (!energyToggle.checked) {
+        keOut.textContent = peOut.textContent = teOut.textContent = '—';
+        return;
+      }
+      const id = particleSelect.value;
+      const p = particles.find(x => x.id === id);
+      if (!p) {
+        keOut.textContent = peOut.textContent = teOut.textContent = '—';
+        return;
+      }
+      const e = energyFor(p);
+      keOut.textContent = e.ke.toExponential(3);
+      peOut.textContent = e.pe.toExponential(3);
+      teOut.textContent = e.te.toExponential(3);
+    }
+
+    setInterval(updateEnergyReadout, 150);
+    updateLabels();
+    refreshParticleSelect();
+    requestAnimationFrame(loop);
+  </script>
 </body>
 </html>
