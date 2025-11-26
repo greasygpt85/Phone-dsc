@@ -148,7 +148,7 @@
         <div class="legend">
           • Left click in the canvas to place a massive body. <br>
           • In test particle mode, click to set a start point then drag and release to set the launch velocity. <br>
-          • Drag with the right mouse button (or hold Space) to pan; scroll to zoom. <br>
+          • Drag with the right mouse button (or use two fingers on touch) to pan; scroll to zoom. <br>
           • Energy is computed from the selected particle versus all massive bodies.
         </div>
       </div>
@@ -167,6 +167,7 @@
     let camera = { x: 0, y: 0, zoom: 1 };
     let isPanning = false;
     let panStart = { x: 0, y: 0, camX: 0, camY: 0 };
+    let touchPanning = false;
 
     const G = 0.05;
     const massScale = 1e-24; // shrink real masses to sandbox scale
@@ -198,8 +199,12 @@
       bodies.push({ x, y, mass, color, radius: Math.max(4, Math.log10(mass + 10)) });
     }
 
+    function fallbackId() {
+      return `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
     function addParticle(x, y, vx, vy, mass, color, name = 'Particle') {
-      const id = crypto.randomUUID();
+      const id = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : fallbackId();
       particles.push({ id, name, x, y, vx, vy, mass, color, trail: [] });
       refreshParticleSelect();
       particleSelect.value = id;
@@ -340,57 +345,126 @@
 
     // Interaction
     let mouseWorld = { x: 0, y: 0 };
-    canvas.addEventListener('mousemove', e => {
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      mouseWorld = screenToWorld(x, y);
-      if (isPanning) {
-        const dx = (x - panStart.x) / camera.zoom;
-        const dy = (y - panStart.y) / camera.zoom;
-        camera.x = panStart.camX - dx;
-        camera.y = panStart.camY - dy;
-      }
-    });
 
-    canvas.addEventListener('mousedown', e => {
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      mouseWorld = screenToWorld(x, y);
+    function setMouseWorld(px, py) {
+      mouseWorld = screenToWorld(px, py);
+    }
 
-      if (e.button === 2 || e.metaKey || e.altKey || e.buttons === 4 || e.shiftKey || e.code === 'Space') {
-        isPanning = true;
-        panStart = { x, y, camX: camera.x, camY: camera.y };
+    function startPan(px, py) {
+      isPanning = true;
+      panStart = { x: px, y: py, camX: camera.x, camY: camera.y };
+    }
+
+    function continuePan(px, py) {
+      if (!isPanning) return;
+      const dx = (px - panStart.x) / camera.zoom;
+      const dy = (py - panStart.y) / camera.zoom;
+      camera.x = panStart.camX - dx;
+      camera.y = panStart.camY - dy;
+    }
+
+    function endPan() {
+      isPanning = false;
+    }
+
+    function handleDown(clientX, clientY, opts = {}) {
+      const rect = canvas.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      setMouseWorld(x, y);
+
+      if (opts.forcePan || opts.button === 2 || opts.metaKey || opts.altKey || opts.middleButton || opts.shiftKey) {
+        startPan(x, y);
         return;
       }
 
       if (mode === 'mass') {
         addMassBody(mouseWorld.x, mouseWorld.y, Number(massSlider.value), '#f5b6ff');
-      } else if (mode === 'particle') {
-        if (!placingStart) {
-          placingStart = { x: mouseWorld.x, y: mouseWorld.y };
-        }
+      } else if (mode === 'particle' && !placingStart) {
+        placingStart = { x: mouseWorld.x, y: mouseWorld.y };
       }
-    });
+    }
 
-    canvas.addEventListener('mouseup', e => {
-      if (isPanning) { isPanning = false; return; }
+    function handleUp(clientX, clientY) {
+      if (isPanning) { endPan(); return; }
       if (mode === 'particle' && placingStart) {
         const launchPoint = placingStart;
         placingStart = null;
         const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
         const end = screenToWorld(x, y);
         const vx = (end.x - launchPoint.x) * 0.6;
         const vy = (end.y - launchPoint.y) * 0.6;
         const selectedMass = Number(testMassSelect.value);
         addParticle(launchPoint.x, launchPoint.y, vx, vy, selectedMass, colorPicker.value, testMassSelect.selectedOptions[0].textContent);
       }
+    }
+
+    canvas.addEventListener('mousemove', e => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      setMouseWorld(x, y);
+      continuePan(x, y);
+    });
+
+    canvas.addEventListener('mousedown', e => {
+      handleDown(e.clientX, e.clientY, { button: e.button, metaKey: e.metaKey, altKey: e.altKey, middleButton: e.buttons === 4, shiftKey: e.shiftKey });
+    });
+
+    canvas.addEventListener('mouseup', e => {
+      handleUp(e.clientX, e.clientY);
     });
 
     canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+    // Touch support (Pythonista-friendly)
+    const getTouchCenter = touches => {
+      let sx = 0, sy = 0;
+      for (let i = 0; i < touches.length; i++) { sx += touches[i].clientX; sy += touches[i].clientY; }
+      return { x: sx / touches.length, y: sy / touches.length };
+    };
+
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (e.touches.length > 1) {
+        const rect = canvas.getBoundingClientRect();
+        const center = getTouchCenter(e.touches);
+        touchPanning = true;
+        startPan(center.x - rect.left, center.y - rect.top);
+        return;
+      }
+      const t = e.touches[0];
+      handleDown(t.clientX, t.clientY, { forcePan: false });
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      if (touchPanning && e.touches.length > 0) {
+        const center = getTouchCenter(e.touches);
+        continuePan(center.x - rect.left, center.y - rect.top);
+        return;
+      }
+      const t = e.touches[0];
+      const x = t.clientX - rect.left;
+      const y = t.clientY - rect.top;
+      setMouseWorld(x, y);
+    }, { passive: false });
+
+    const endTouchPan = e => {
+      e.preventDefault();
+      if (touchPanning && e.touches.length <= 1) {
+        touchPanning = false;
+        endPan();
+      }
+      const t = e.changedTouches[0];
+      if (t) handleUp(t.clientX, t.clientY);
+    };
+
+    canvas.addEventListener('touchend', endTouchPan, { passive: false });
+    canvas.addEventListener('touchcancel', endTouchPan, { passive: false });
 
     canvas.addEventListener('wheel', e => {
       e.preventDefault();
