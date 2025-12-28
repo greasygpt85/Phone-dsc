@@ -196,6 +196,21 @@
   </div>
 
   <div class="panel">
+    <details open>
+      <summary><b>Pythonista 3 Bridge</b></summary>
+      <p class="small" id="pyStatus">Configure the Pythonista script path to enable the bridge.</p>
+      <div class="row" style="margin-top:8px;">
+        <input id="pyScript" type="text" placeholder="Script path (e.g. PhoneDSCBridge.py)" />
+        <button id="btnPythonistaOpen">Open Bridge</button>
+        <button id="btnPythonistaSend" class="accent">Send Target</button>
+      </div>
+      <p class="small">Install the companion script in Pythonista 3 and leave this page open in Safari/PWA. <b>Open Bridge</b> launches the
+        script via the <code>pythonista://</code> URL scheme. <b>Send Target</b> pushes the selected object's data (name, RA/Dec,
+        calculated Alt/Az, location, and scope orientation when available) to the script.</p>
+    </details>
+  </div>
+
+  <div class="panel">
     <details>
       <summary><b>Debug</b> (sensors & permissions)</summary>
       <div class="grid">
@@ -264,9 +279,87 @@ const OBJECTS = [
 
 function tipsHTML(){ return OBJECTS.map(o => `<div style="padding:4px 0;"><b>${o[0]}</b> — <i>${o[1]}</i>. ${o[5]}</div>`).join(""); }
 const state = { lat:null, lon:null, lst:null, selectedIndex:0, heading:null, beta:null, gamma:null, altCal:{a:null,b:null,betaH:null,betaZ:null}, azOffset:0, running:false, watchId:null };
+const pythonista = { script:"", lastSent:null };
 const $ = id => document.getElementById(id);
 
-document.addEventListener('DOMContentLoaded', () => { $("tipsBox").innerHTML = tipsHTML(); populateSelect(); loadSavedLoc(); });
+document.addEventListener('DOMContentLoaded', () => { $("tipsBox").innerHTML = tipsHTML(); populateSelect(); loadSavedLoc(); loadPythonistaConfig(); });
+
+function loadPythonistaConfig() {
+  try {
+    const saved = localStorage.getItem("dsc_py_script");
+    if (saved) pythonista.script = saved;
+  } catch (e) {
+    console.warn("Pythonista config load failed", e);
+  }
+  const input = $("pyScript");
+  if (input) input.value = pythonista.script;
+  updatePythonistaStatus();
+}
+
+function savePythonistaScript(value) {
+  pythonista.script = value.trim();
+  try {
+    if (pythonista.script) localStorage.setItem("dsc_py_script", pythonista.script);
+    else localStorage.removeItem("dsc_py_script");
+  } catch (e) {
+    console.warn("Pythonista config save failed", e);
+  }
+  updatePythonistaStatus();
+}
+
+function encodePythonistaScript(script) { return script.split('/').map(part => encodeURIComponent(part)).join('/'); }
+
+function pythonistaUrl(payload = null) {
+  if (!pythonista.script) return null;
+  const base = `pythonista://${encodePythonistaScript(pythonista.script)}?action=run`;
+  if (!payload) return base;
+  const json = JSON.stringify(payload);
+  return `${base}&argv=${encodeURIComponent(json)}`;
+}
+
+function updatePythonistaStatus(note = "") {
+  const statusEl = $("pyStatus");
+  if (!statusEl) return;
+  const scriptText = pythonista.script ? `Script: ${pythonista.script}` : "Configure the Pythonista script path to enable the bridge.";
+  let suffix = "";
+  if (note) suffix = ` — ${note}`;
+  else if (pythonista.lastSent) suffix = ` — Last sent ${pythonista.lastSent.toLocaleTimeString()}`;
+  statusEl.textContent = scriptText + suffix;
+}
+
+function openPythonista(payload = null, note = "") {
+  const url = pythonistaUrl(payload);
+  if (!url) { alert("Set the Pythonista script path first."); return; }
+  pythonista.lastSent = new Date();
+  updatePythonistaStatus(note);
+  window.location.href = url;
+}
+
+function sendTargetToPythonista() {
+  if (!pythonista.script) { alert("Set the Pythonista script path first."); return; }
+  const idx = parseInt($("objSelect").value, 10);
+  if (isNaN(idx)) { alert("Select a target first."); return; }
+  if (state.lat == null || state.lon == null) { alert("Set your location before sending to Pythonista."); return; }
+  const now = new Date();
+  const target = OBJECTS[idx];
+  const pos = radecToAltAz(target[2], target[3], state.lat, state.lon, now);
+  const payload = {
+    targetName: target[0],
+    targetType: target[1],
+    magnitude: target[4],
+    raHours: target[2],
+    decDeg: target[3],
+    altDeg: Number(pos.altDeg.toFixed(2)),
+    azDeg: Number(pos.azDeg.toFixed(2)),
+    timestamp: now.toISOString(),
+    location: { lat: state.lat, lon: state.lon },
+    lstHours: state.lst,
+  };
+  const altMeasured = currentAltFromTilt();
+  if (altMeasured != null) payload.scopeAlt = Number(altMeasured.toFixed(2));
+  if (state.heading != null) payload.scopeAz = Number(mod(state.heading + state.azOffset, 360).toFixed(2));
+  openPythonista(payload, "Sent target to Pythonista");
+}
 
 function populateSelect(sortedIndices = null) {
   const sel = $("objSelect");
@@ -460,6 +553,9 @@ $("btnEasy").addEventListener("click", () => { const sorted = easyTonightIndices
 $("objSelect").addEventListener("change", (e)=>{ state.selectedIndex = parseInt(e.target.value,10) || 0; });
 $("btnSave").addEventListener("click", () => { const vlat = parseFloat($("lat").value), vlon = parseFloat($("lon").value); if (!isNaN(vlat) && !isNaN(vlon)) setLatLon(vlat, vlon, true); });
 $("btnClear").addEventListener("click", () => { localStorage.removeItem("dsc_lat"); localStorage.removeItem("dsc_lon"); alert("Saved location cleared."); });
+$("pyScript").addEventListener("change", (e) => savePythonistaScript(e.target.value));
+$("btnPythonistaOpen").addEventListener("click", () => openPythonista(null, "Opened in Pythonista"));
+$("btnPythonistaSend").addEventListener("click", sendTargetToPythonista);
 
 requestAnimationFrame(update);
 </script>
