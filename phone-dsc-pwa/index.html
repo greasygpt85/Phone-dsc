@@ -118,6 +118,17 @@
   .footnote { font-size: 11px; color: var(--muted); }
   .small { font-size: 12px; color: var(--muted); }
   .banner { background:linear-gradient(135deg, var(--accent-soft), var(--accent-aux-soft)); border:1px solid var(--accent); color:#ffe7ff; padding:10px 12px; border-radius:12px; margin-bottom:12px; box-shadow:0 0 20px var(--accent-glow); }
+  .table-wrap { overflow-x:auto; }
+  .work-table { width:100%; border-collapse:separate; border-spacing:0; font-variant-numeric: tabular-nums; }
+  .work-table thead th { text-align:left; font-size:12px; color: var(--muted); letter-spacing:0.4px; padding:8px 10px; border-bottom:1px solid var(--panel-border); }
+  .work-table tbody td { padding:10px; border-bottom:1px solid rgba(160,90,255,0.25); }
+  .work-table th:first-child, .work-table td:first-child { border-top-left-radius:10px; }
+  .work-table th:last-child, .work-table td:last-child { border-top-right-radius:10px; }
+  .work-table tbody tr:last-child td { border-bottom:0; }
+  .pill { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:10px; background:rgba(12,6,30,0.8); border:1px solid var(--panel-border); box-shadow: inset 0 0 10px rgba(0,246,255,0.1); }
+  .pill.done { color: var(--good); border-color: rgba(118,255,181,0.7); box-shadow: 0 0 16px rgba(118,255,181,0.25); }
+  .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; letter-spacing:0.2px; }
+  .notes { line-height:1.35; }
 </style>
 </head>
 <body>
@@ -196,6 +207,30 @@
   </div>
 
   <div class="panel">
+    <details open>
+      <summary><b>Daily load template</b> (quick copy/paste)</summary>
+      <p class="small">Marks indicate completion; adjust rows as needed.</p>
+      <div class="table-wrap">
+        <table class="work-table" id="loadTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>C</th>
+              <th>Broker/Customer</th>
+              <th>Load ID/Order #</th>
+              <th>Container #</th>
+              <th>Trailer #</th>
+              <th>Notes</th>
+              <th>Rate</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+
+  <div class="panel">
     <details>
       <summary><b>Debug</b> (sensors & permissions)</summary>
       <div class="grid">
@@ -262,11 +297,41 @@ const OBJECTS = [
   ["Saturn (approx)", "Planet", 23.0, -6.0, 1.0, "Use 150–250× in steady seeing. Cassini Division pops in good moments."]
 ];
 
+const LOAD_TEMPLATE = [
+  { num: 1, done: true, broker: "Kontos", loadId: "605723", container: "4013542", trailer: "—", notes: "Yard POS: DDB", rate: "$205.00" },
+  { num: 2, done: true, broker: "Coastal", loadId: "605114", container: "4000838", trailer: "—", notes: "214-531-5202 — 9:00 AM", rate: "$192.50" },
+  { num: 3, done: true, broker: "Coastal", loadId: "605109", container: "7100474", trailer: "—", notes: "—", rate: "$192.50" },
+  { num: 4, done: true, broker: "Blaker", loadId: "606613", container: "7221820", trailer: "—", notes: "470-597-0940 — 7:50 AM", rate: "$50.00" },
+  { num: 5, done: true, broker: "Blaker", loadId: "610535", container: "8101520", trailer: "—", notes: "228-249-0227 — 8:00 AM", rate: "$50.00" },
+  { num: 6, done: true, broker: "Blaker", loadId: "606617", container: "2131910", trailer: "—", notes: "214-755-3152 — 9:55 AM", rate: "$50.00" },
+  { num: 7, done: true, broker: "Blaker", loadId: "606613", container: "—", trailer: "—", notes: "Overweight load\nReturn container: 2131910", rate: "$50.00" },
+  { num: 8, done: true, broker: "Big Rock", loadId: "607014", container: "5475630", trailer: "—", notes: "—", rate: "$90.00" }
+];
+
+function renderLoadTemplate(){
+  const tbody = document.querySelector("#loadTable tbody");
+  if (!tbody) return;
+  tbody.innerHTML = LOAD_TEMPLATE.map(row => {
+    const statusClass = row.done ? "pill done" : "pill";
+    const notes = (row.notes || "—").split("\n").map(s => s || "—").join("<br>");
+    return `<tr>
+      <td class="mono">${row.num}</td>
+      <td><span class="${statusClass}">${row.done ? "✔" : ""}</span></td>
+      <td>${row.broker}</td>
+      <td class="mono">${row.loadId}</td>
+      <td class="mono">${row.container}</td>
+      <td class="mono">${row.trailer}</td>
+      <td class="notes">${notes}</td>
+      <td class="mono">${row.rate}</td>
+    </tr>`;
+  }).join("");
+}
+
 function tipsHTML(){ return OBJECTS.map(o => `<div style="padding:4px 0;"><b>${o[0]}</b> — <i>${o[1]}</i>. ${o[5]}</div>`).join(""); }
 const state = { lat:null, lon:null, lst:null, selectedIndex:0, heading:null, beta:null, gamma:null, altCal:{a:null,b:null,betaH:null,betaZ:null}, azOffset:0, running:false, watchId:null };
 const $ = id => document.getElementById(id);
 
-document.addEventListener('DOMContentLoaded', () => { $("tipsBox").innerHTML = tipsHTML(); populateSelect(); loadSavedLoc(); });
+document.addEventListener('DOMContentLoaded', () => { $("tipsBox").innerHTML = tipsHTML(); populateSelect(); loadSavedLoc(); renderLoadTemplate(); });
 
 function populateSelect(sortedIndices = null) {
   const sel = $("objSelect");
