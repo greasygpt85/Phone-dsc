@@ -214,7 +214,13 @@
 <footer class="footer">
   <span class="footnote">If location fails, host this file over HTTPS (GitHub Pages/Netlify) or use manual/preset.</span>
 </footer>
-<script>if ('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js').catch(console.error));}</script>
+<script>
+  if ('serviceWorker' in navigator && window.isSecureContext) {
+    window.addEventListener('load', () =>
+      navigator.serviceWorker.register('service-worker.js').catch(console.error)
+    );
+  }
+</script>
 
 <script>
 const DEG2RAD = Math.PI/180, RAD2DEG = 180/Math.PI;
